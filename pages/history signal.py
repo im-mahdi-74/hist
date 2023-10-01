@@ -240,7 +240,7 @@ def mainchart(df): #timePPm()
         st.metric("بهترین معامله", f"{besttrade:.2f}%")
         st.metric("بدترین معامله", f"{worsttrade:.2f}%")  
         st.metric("میانگین ضرر", f"{avgLoss:.2f}%")
-        st.metric("میانگین حجم به موجودی", f"{avgVB:.2f}%")
+        st.metric("میانگین نسبت حجم به موجودی", f"{avgVB:.2f}")
 
     # جدا کننده
     st.markdown("---")
@@ -498,7 +498,10 @@ if uploaded_files:
             # نام فایل برای پاک کردن
 
         analhist(filelist)
+    for file in st.session_state['uploaded_files']:
+        os.remove(file.name) 
 
+    del st.session_state['uploaded_files']
 
 
 

@@ -304,7 +304,7 @@ def mainchart(df): #timePPm()
     trades     = len(df)
     besttrade  = df['PP'].max()
     worsttrade = df['PP'].min()
-    avgtimetrade = df['delta'].mean()
+    avgtimetrade = (df['delta'].mean())/60
     longtrade  = (df['Type'] == 'Buy').sum()
     shorttrade = (df['Type'] == 'Sell').sum()
     avgProfit  = df['+PP'].mean()
@@ -321,15 +321,15 @@ def mainchart(df): #timePPm()
     with col1:
         st.metric("تعداد معاملات", trades)
         st.metric("درصد موفقیت", f"{winrate:.2f}%")
-        st.metric("میانگین سود", f"{avgProfit:.2f}")
-        st.metric("میانگین زمان", f"{avgtimetrade:.2f}")
+        st.metric("میانگین سود به درصد", f"{avgProfit:.2f}")
+        st.metric("میانگین زمان به دقیقه", f"{avgtimetrade:.2f}")
     
     # ستون دوم
     with col2:
         st.metric("بهترین معامله", f"{besttrade:.2f}%")
         st.metric("بدترین معامله", f"{worsttrade:.2f}%")  
-        st.metric("میانگین ضرر", f"{avgLoss:.2f}%")
-        st.metric("میانگین حجم به موجودی", f"{avgVB:.2f}%")
+        st.metric("میانگین ضرر به درصد", f"{avgLoss:.2f}%")
+        st.metric("میانگین حجم به موجودی", f"{avgVB:.2f}")
 
     # جدا کننده
     st.markdown("---")
@@ -345,21 +345,91 @@ def mainchart(df): #timePPm()
     with right:
         st.info(f"تعداد معاملات فروش: {shorttrade}")
     
-    # نمودار دایره‌ای    
-    fig = px.pie(
-        values=[win, loss],
-        names=['سودده', 'ضررده'],
-        color_discrete_map={
-            'سودده': 'green',
-            'ضررده': 'red'
-        }
-    )
-    st.plotly_chart(fig)
+    labels = 'win trade','loss trade' 
+    sizes = [win, loss]
+    explode = (0, 0.2)  # only "explode" the 2nd slice (i.e. 'Hogs')
+    colors = ['green', 'red']
 
+    fig1, ax1 = plt.subplots()
+    ax1.pie(sizes, explode=explode, labels=labels, autopct='%1.1f%%',
+            shadow=True, startangle=90, colors=colors)
+    ax1.axis('equal')  # Equal aspect ratio ensures that pie is drawn as a circle.
+
+    st.pyplot(fig1)
     # نمایش دیتافریم   
     st.dataframe(df.head())
 
-    
+def p_chart_one(df):
+
+    # ایجاد یک دیتافریم خالی برای ذخیره میانگین PP برای هر نماد و نوع تراکنش
+    average_pp_df = pd.DataFrame(columns=['Symbol', 'Type', 'Average Positive PP', 'Average Negative PP'])
+
+    # حلقه برای محاسبه میانگین PP برای تمام نمادها و انواع تراکنش‌ها
+    symbols = df['Symbol'].unique()
+    types = df['Type'].unique()
+
+    for symbol in symbols:
+        for type in types:
+            filtered_df = df[(df['Symbol'] == symbol) & (df['Type'] == type)]
+            average_positive_pp = filtered_df[filtered_df['PP'] > 0]['PP'].mean()
+            average_negative_pp = filtered_df[filtered_df['PP'] < 0]['PP'].mean()
+            # افزودن به دیتافریم با استفاده از دستور loc
+            average_pp_df.loc[len(average_pp_df)] = [symbol, type, average_positive_pp, average_negative_pp]
+
+    # ایجاد نمودار با استفاده از کتابخانه Plotly
+    fig = px.bar(average_pp_df, x='Symbol', y=['Average Positive PP', 'Average Negative PP'],
+                title='Average PP by Symbol and Type (Positive and Negative)',
+                labels={'Symbol': 'Symbol (Type)', 'variable': 'PP Type', 'value': 'Average PP'})
+    fig.update_layout(barmode='group')
+
+    # نمایش نمودار با استفاده از Streamlit
+    st.plotly_chart(fig, width=0, height=700)
+
+    pass
+
+
+#average_pp_df = pd.DataFrame({'Average PP': [average_pp]})
+
+def p_chart_two(df):
+
+    # ایجاد یک دیتافریم خالی برای ذخیره میانگین PP برای هر نماد و نوع تراکنش
+    average_pp_df = pd.DataFrame(columns=['Symbol', 'Type', 'Average Positive PP', 'Average Negative PP'])
+
+    # حلقه برای محاسبه میانگین PP برای تمام نمادها و انواع تراکنش‌ها
+    symbols = df['Symbol'].unique()
+    types = df['Type'].unique()
+
+    for symbol in symbols:
+        for type in types:
+            filtered_df = df[(df['Symbol'] == symbol) & (df['Type'] == type)]
+            average_positive_pp = filtered_df[filtered_df['PP'] > 0]['PP'].sum()
+            average_negative_pp = filtered_df[filtered_df['PP'] < 0]['PP'].sum()
+            # افزودن به دیتافریم با استفاده از دستور loc
+            average_pp_df.loc[len(average_pp_df)] = [symbol, type, average_positive_pp, average_negative_pp]
+
+    # ایجاد چارت میله‌ای با میانگین PP مثبت و منفی با رنگ‌های متفاوت با Matplotlib
+    fig, ax = plt.subplots()
+    bar_width = 0.35
+    bar_positions = range(len(average_pp_df))
+    bar1 = ax.bar(bar_positions, average_pp_df['Average Positive PP'], width=bar_width, label='Positive PP', color='g')
+    bar2 = ax.bar([pos + bar_width for pos in bar_positions], average_pp_df['Average Negative PP'], width=bar_width, label='Negative PP', color='r')
+
+    ax.set_xlabel('Symbol')
+    ax.set_ylabel('PP')
+    ax.set_title('Average PP by Symbol and Type (Positive and Negative)')
+    ax.set_xticks([pos + bar_width / 2 for pos in bar_positions])
+    #ax.set_xticklabels(average_pp_df.apply(lambda row: f"{row['Symbol']}", axis=1))
+    ax.set_xticklabels(average_pp_df.apply(lambda row: f"{row['Symbol']} ({row['Type']})", axis=1), rotation=90)
+
+    ax.legend()
+
+    # نمایش نمودار با استفاده از Streamlit
+    st.pyplot(fig)
+
+
+
+
+
         
 def p_chart(df):
     st.title('نمودار تایپ معاملات ')
@@ -371,7 +441,7 @@ def p_chart(df):
     df = df.drop_duplicates()
     df = df.drop_duplicates(subset=['Symbol'])
     st.bar_chart(df,x='Symbol', y =['Buy', 'Sell'] , width=0, height=700 )
-
+    pass
 
 def pp_chart(df):
 
@@ -630,6 +700,10 @@ if os.path.exists('data.csv'):
 
         p_chart(d)
 
+    if st.button('بار چارت سود ضرر هر تایپ در هر نماد ' , key = 'anal1_1' ): 
+
+        p_chart_two(d)
+
     if st.button('سود ضرر درصدی هر نماد ' , key = 'anal2' ):
         pp_chart(d)
     
@@ -700,6 +774,7 @@ if os.path.exists('data_tow.csv'):
     if st.button('چارت سود با عدد دلخواه' , key = 'ass8' ):
 
         chart_in_b(dd , numberr)
+
 
 
 

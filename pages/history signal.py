@@ -11,11 +11,94 @@ from tqdm import tqdm
 import time
 import threading as td
 import os
+import csv
+from pathlib import Path
 #def num trade in 
 dff = None
 
+def remove():
+    script_directory = os.path.dirname(os.path.abspath(__file__))
+    # مسیر دایرکتوری محل ذخیره فایل‌های CSV
+    csv_directory = os.path.join(script_directory, 'csv_files')
+
+    def list_files(directory):
+        files = os.listdir(directory)
+        return [file for file in files if file.endswith(".csv")]
+
+    def delete_csv_files(directory):
+        csv_files = list_files(directory)
+        for file in csv_files:
+            file_path = os.path.join(directory, file)
+            os.remove(file_path)
+    pass
+
+
+
+def convert(df):
+    df =  pd.read_excel(df)
+
+    def init_balance(df):
+        n = 0
+        for index , row in  df.iterrows():
+            if n == 1:
+                bal =  df.at[index , 'Unnamed: 11'] 
+                tim =  df.at[index , 'Strategy Tester Report'] 
+                n = 0
+            if row['Unnamed: 11'] == 'Balance':
+                n = 1
+        return bal , tim
+    def create_df(df):
+        selected_rows = df[~df['Unnamed: 4'].isin(['in', 'out'])]
+        selected_rows = selected_rows
+        # حذف ردیف‌های انتخاب شده و ایجاد DataFrame جدید
+        df = df.drop(selected_rows.index)
+        return df
+    def col_name(df):
+        col = ['Time','Deal','Symbol','Type','Direction','Volume','Price','Order','Commission','Swap','Profit','Balance','Comment']
+        df.columns = col
+        return df
+    def to_date_time(df):
+        #df['Time'] = pd.to_datetime(df['Time'], format='%Y.%m.%d %H:%M:%S')
+        return df
+    def ea_to_signal(df, a_one, a_one_two):
+        df.reset_index(drop=True, inplace=True)
+        newdf = pd.DataFrame({'Type': ['Balance'] , 'Profit': [a_one] , 'Time': [a_one_two]})
+        newdf = pd.concat([newdf, pd.DataFrame({'Type': 'Balance', 'Profit': a_one , 'Time': a_one_two}, index=[0])], ignore_index=True)
+        for index , row in df.iterrows():
+            if row['Direction'] == 'in':
+                newdf.at[index , 'Time']         = df.at[index, 'Time']
+                newdf.at[index , 'Symbol']       = df.at[index, 'Symbol']
+                newdf.at[index , 'Type']         = df.at[index, 'Type']
+                newdf.at[index , 'Volume']       = df.at[index, 'Volume']
+                newdf.at[index , 'Price']        = df.at[index, 'Price']
+                newdf.at[index , 'Commission']   = df.at[index, 'Commission']
+                newdf.at[index , 'Swap']         = df.at[index, 'Swap']
+                newdf.at[index , 'Balance']      = df.at[index, 'Balance']
+                newdf.at[index , 'Comment']      = df.at[index, 'Comment']   
+            if row['Direction'] == 'out':
+                indexx = index-1
+                newdf.at[indexx , 'Profit']      = df.at[index, 'Profit']
+                newdf.at[indexx , 'Time_1']      = df.at[index, 'Time']
+                newdf.at[indexx , 'Price_1']     = df.at[index, 'Price']
+                newdf.at[indexx , 'Balance_now'] = df.at[index, 'Balance']
+            
+        newdf.iloc[[1,0],:] = newdf.iloc[[0,1],:]
+        newdf.reset_index(drop=True, inplace=True)
+        return newdf
 
     
+    a_one , a_one_two = init_balance(df)
+    a_two = create_df(df)
+    a_tre = col_name(a_two)
+    a_for = to_date_time(a_tre)
+    a_five= ea_to_signal(a_for, a_one , a_one_two)
+    #print(a_one_two)
+    #a_five.iloc[0] = a_five.iloc[0].fillna('')
+    
+    #a_five = a_five.iloc[::-1]
+    return a_five
+
+
 
 
 
@@ -113,6 +196,10 @@ def analhist(file_list):
             
     except ValueError as er:
         (er)
+
+
+
+
 def timePPm(df):
     st.write('             جدول ترکیب شده سابقه های معاملاتی ')
     
@@ -180,6 +267,7 @@ def timePPm(df):
         
         return filtered_df
 
+
 def inside(df):
 
     for index, row in df.iterrows():
@@ -207,6 +295,7 @@ def inside(df):
 
 
     return df
+
 
 def mainchart(df): #timePPm()
     win        = (df['Profit'] > 0).sum()
@@ -240,7 +329,7 @@ def mainchart(df): #timePPm()
         st.metric("بهترین معامله", f"{besttrade:.2f}%")
         st.metric("بدترین معامله", f"{worsttrade:.2f}%")  
         st.metric("میانگین ضرر", f"{avgLoss:.2f}%")
-        st.metric("میانگین نسبت حجم به موجودی", f"{avgVB:.2f}")
+        st.metric("میانگین حجم به موجودی", f"{avgVB:.2f}%")
 
     # جدا کننده
     st.markdown("---")
@@ -282,7 +371,8 @@ def p_chart(df):
     df = df.drop_duplicates()
     df = df.drop_duplicates(subset=['Symbol'])
     st.bar_chart(df,x='Symbol', y =['Buy', 'Sell'] , width=0, height=700 )
-    
+
+
 def pp_chart(df):
 
     result = df.groupby(['Symbol', 'Type']).size().unstack(fill_value=0)
@@ -296,6 +386,7 @@ def pp_chart(df):
     df = df.drop_duplicates()
     st.bar_chart(df,x='Symbol', y =['-PPsum','+PPsum'] , width=0, height=700 )
 
+
 def pp1_chart(df):
 
     result = df.groupby(['Symbol', 'delta']).size().unstack(fill_value=0)
@@ -307,6 +398,7 @@ def pp1_chart(df):
     df = df.drop_duplicates()
     df['Hdelta'] = df['delta']/3600
     st.bar_chart(df,x='Symbol', y = 'Hdelta', width=0, height=700 )
+
 
 def pp2_chart(df):
 
@@ -320,10 +412,12 @@ def pp2_chart(df):
     
     st.bar_chart(df,x='Symbol', y = 'V/B', width=0, height=700 )
 
+
 def pp3_chart(df):
     df['cospp'] = df['PP'].cumsum()
     df['cosvb'] = df['V/B'].cumsum()
     st.line_chart(df , x = 'Time' , y= 'cospp' ,  width=0, height=700)
+
 
 def main_chart_one(df):
     # چارت حجم بر زمان         چارت تعداد معاملات باز بر زمان 
@@ -377,6 +471,7 @@ def main_chart_one(df):
     
     st.line_chart(chart_df, x = 'Time' , y = 'OpenTrades' , width=0, height=700 )
 
+
 def chart_in_b(df , b):
 
     for index, row in df.iterrows():
@@ -386,6 +481,7 @@ def chart_in_b(df , b):
 
     st.line_chart(df , x= 'Time' , y= 'cosnewProfit' ,  width=0, height=700 )
 
+@st.cache_data
 def main_change(df, selected_symbols,selected_symbols_two):
 
     # حذف نماد 
@@ -433,11 +529,6 @@ def main_change(df, selected_symbols,selected_symbols_two):
 
 
 
-
-
-
-
-
 def m_chart(df): #timePPm()
 
   columns = df.columns.tolist()
@@ -460,12 +551,23 @@ def m_chart(df): #timePPm()
 
 
 
-
+if st.button("Clear All"):
+    # Clear values from *all* all in-memory and on-disk data caches:
+    # i.e. clear values from both square and cube
+    st.cache_data.clear()
 
 
 st.title('اینجا میتونی هیستوری سیگنال ها رو اپلود کنی')
 
 uploaded_files = st.file_uploader("هیستوری ها رو انتخاب کن", accept_multiple_files=True, type=['csv'])
+
+
+
+
+file_paths = []
+
+
+
 
 
 if uploaded_files:
@@ -475,16 +577,20 @@ if uploaded_files:
         df = pd.read_csv(io.StringIO(file.read().decode('utf-8')) , delimiter=';') 
         df
         file_name = file.name
+        file_path = file.name 
+        file_paths.append(file_path)
         df.to_csv(file_name ,sep = ';', index=False )
         # دسترسی به لیست آدرس فایل ها
-
+    
 
     st.title('Process Selected Files')
 
     selected_files = st.multiselect('Select files', uploaded_files)
-    
+
     filelist = []
  
+
+
     
     if st.button('Process Selected Files'):
         file_name = 'data.csv'
@@ -495,15 +601,19 @@ if uploaded_files:
         for file in selected_files:
             st.write(f'name file : {file.name}','.....', f'size : {file.size}k')
             filelist.append(file.name)
+            
             # نام فایل برای پاک کردن
 
         analhist(filelist)
-    for file in st.session_state['uploaded_files']:
-        os.remove(file.name) 
-
-    del st.session_state['uploaded_files']
 
 
+        for p in file_paths:
+            if os.path.exists(p):
+                os.remove(p)
+        file_paths.clear()
+
+        #delete_csv_files(csv_directory)
+        st.success('csv removed ')
 
 if os.path.exists('data.csv'):
     dff = pd.read_csv('data.csv')
@@ -590,8 +700,6 @@ if os.path.exists('data_tow.csv'):
     if st.button('چارت سود با عدد دلخواه' , key = 'ass8' ):
 
         chart_in_b(dd , numberr)
-
-
 
 
 

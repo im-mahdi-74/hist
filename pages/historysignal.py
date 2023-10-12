@@ -1,0 +1,992 @@
+import streamlit as st
+import pandas as pd
+import plotly.express as px
+import datetime
+import io 
+import numpy as np
+import plotly.graph_objects as go
+from datetime import timedelta
+import matplotlib.pyplot as plt
+from tqdm import tqdm
+import time
+import threading as td
+import os
+import csv
+from pathlib import Path
+#def num trade in 
+
+
+
+
+
+
+
+def remove():
+    script_directory = os.path.dirname(os.path.abspath(__file__))
+    # مسیر دایرکتوری محل ذخیره فایل‌های CSV
+    csv_directory = os.path.join(script_directory, 'csv_files')
+
+    def list_files(directory):
+        files = os.listdir(directory)
+        return [file for file in files if file.endswith(".csv")]
+
+    def delete_csv_files(directory):
+        csv_files = list_files(directory)
+        for file in csv_files:
+            file_path = os.path.join(directory, file)
+            os.remove(file_path)
+    pass
+
+
+def convert(dfe):
+    con_to_hist = pd.DataFrame()
+    for dff in dfe:
+        df = pd.read_excel(f'{dff}')
+        def init_balance(df):
+            for index , row in  df.iterrows():
+                if row['Unnamed: 3'] == 'balance':
+                    bal =   df.at[index , 'Unnamed: 11']
+                    tim =   df.at[index , 'Strategy Tester Report']  
+                    break
+            if bal and tim :
+                return bal , tim
+            else:
+                print('file colume not normal and rejact!!!')
+        def create_df(df):
+            selected_rows = df[~df['Unnamed: 4'].isin(['in', 'out'])]
+            # حذف ردیف‌های انتخاب شده و ایجاد DataFrame جدید
+            df = df.drop(selected_rows.index)
+            return df
+        def col_name(df):
+            col = ['Time','Deal','Symbol','Type','Direction','Volume','Price','Order','Commission','Swap','Profit','Balance','Comment']
+            
+            df.columns = col
+            return df
+        def to_date_time(df):
+            df['Time'] = pd.to_datetime(df['Time'], format='%Y.%m.%d %H:%M:%S')
+            return df    
+        def ea_to_signal(df, a_one, a_one_two):
+            df.reset_index(drop=True, inplace=True)
+            newdf = pd.DataFrame({'Type': ['Balance'] , 'Profit': [a_one] , 'Time': [a_one_two]})
+            newdf = pd.concat([newdf, pd.DataFrame({'Type': 'Balance', 'Profit': a_one , 'Time': a_one_two}, index=[0])], ignore_index=True)
+            non = True
+            for index , row in df.iterrows():
+                if index > 0 :
+                    if row['Type'] == 'balance' :
+
+                        newdf.at[index , 'Price'] =   df.at[index , 'Unnamed: 11']
+                        newdf.at[index , 'Time'] =   df.at[index , 'Strategy Tester Report']
+                        non = False  
+                        continue
+
+
+                    elif row['Direction'] == 'in':
+                        newdf.at[index , 'Time']         = df.at[index, 'Time']
+                        newdf.at[index , 'Symbol']       = df.at[index, 'Symbol']
+                        newdf.at[index , 'Type']         = df.at[index, 'Type']
+                        newdf.at[index , 'Volume']       = df.at[index, 'Volume']
+                        newdf.at[index , 'Price']        = df.at[index, 'Price']
+                        newdf.at[index , 'Commission']   = df.at[index, 'Commission']
+                        newdf.at[index , 'Swap']         = df.at[index, 'Swap']
+                        newdf.at[index , 'Balance_now']  = df.at[index, 'Balance']
+                        newdf.at[index , 'Comment']      = df.at[index, 'Comment']   
+                    elif row['Direction'] == 'out':
+                        indexx = index-1
+                        newdf.at[indexx , 'Profit']      = df.at[index, 'Profit']
+                        newdf.at[indexx , 'Time_1']      = df.at[index, 'Time']
+                        newdf.at[indexx , 'Price_1']     = df.at[index, 'Price']
+                        newdf.at[indexx , 'Balance_now'] = df.at[index, 'Balance']
+                
+            newdf.iloc[[1,0],:] = newdf.iloc[[0,1],:]
+            newdf.reset_index(drop=True, inplace=True)
+            df = newdf.drop(newdf[(newdf['Type'] == 'Balance') & newdf['Price_1'].notna()].index)
+            #newdff = newdf.replace(',', ';', regex=True)
+            return df
+
+        a_one , a_one_two = init_balance(df)
+        a_two = create_df(df)
+        a_tre = col_name(a_two)
+        a_for = to_date_time(a_tre)
+        a_five= ea_to_signal(a_for, a_one , a_one_two)
+        #a_five.iloc[0] = a_five.iloc[0].fillna('')
+        
+        a_five = a_five.iloc[::-1]
+        
+        #a_five.to_csv('nana.csv', mode='w', index = False)
+        
+        #st.write(a_five.columns)
+        con_to_hist = pd.concat([con_to_hist, a_five], ignore_index=True)
+    return con_to_hist
+
+
+def analhist_two(file_list):
+    #st.write(file_list)
+    try:
+
+        df = file_list
+        df = df[::-1].reset_index(drop=True)
+        df
+
+        df['Type'] = df['Type'].str.capitalize()
+        
+        df['Time']    = pd.to_datetime(df['Time'])
+        df['Time_1']  = pd.to_datetime(df['Time_1'])
+        df['Profit']  = df['Profit'].astype(str).str.replace(' ', '')
+        df['Profit']  = pd.to_numeric(df['Profit'].str.replace(' ', ''), errors='coerce')
+        df['Price_1'] = df['Price_1'].astype(str).str.replace(' ', '')
+        df['Price_1'] = pd.to_numeric(df['Price_1'].str.replace(' ', ''), errors='coerce')
+        df['Price']   = df['Price'].astype(str).str.replace(' ', '')
+        df['Price']   = pd.to_numeric(df['Price'].str.replace(' ', ''), errors='coerce')
+        df['Volume'] = pd.to_numeric(df['Volume'], errors='coerce')
+        df['name'] = 'nin'
+        num = 0
+        num2 = 0
+        balance = 0
+        a = 0
+        column_names = df.columns.tolist()
+
+        # یا به صورت مستقیم
+        # column_names = list(df.columns)
+
+        # نمایش نام‌های ستون‌ها
+        print(column_names)
+        for index, row in df.iterrows():
+            #print(row)
+            a = a+1
+            if row['Type'] != 'Balance' and num2 == 0:
+                num = num + 1
+                st.write(f'ریپورت ربات شما بالانس ابتدایی ندارد')
+                break
+
+            if row['Type'] == 'Balance':
+
+                balance = row['Profit']
+                num2 = num2 + 1
+                df = df.drop(index)
+                print(f'task init balance {balance}')
+                continue
+
+            if num2 != 0:
+                if row['Type'] not in ['Buy', 'Sell']:
+                    #print(f'task problm in tpye row {row}')
+                    df = df.drop(index)
+                    
+                    continue
+                balance = balance + df.at[index , 'Profit']                    
+                df.at[index, 'balance']                = balance
+                df.at[index, 'ABSPP']                  = abs(row['Profit'] * 100) / balance
+                df.at[index, 'PP']                     = (row['Profit'] * 100) / balance
+                
+                if (row['Time_1'] - row['Time']).total_seconds() > 0 :
+                    df.at[index, 'deltaH'] = (row['Time_1'] - row['Time']).total_seconds() / 3600
+                    df.at[index, 'deltaM'] = (row['Time_1'] - row['Time']).total_seconds() / 60
+                else:
+                    df.at[index, 'delta'] = 1 
+
+
+                df.at[index, 'ABSpipeg']               = abs(row['Price_1'] - row['Price']) * 1000
+                df.at[index, 'V/B']                    = (row['Volume'] * 100000) / balance
+
+                if row['Price_1'] - row['Price'] == 0:
+                    df.at[index, 'ABSpipeg'] = 0
+
+                if row['Price_1'] - row['Price'] > 0:
+                    if row['Type'] == 'Buy':
+                        df.at[index, '+pipeg']         = row['Price_1'] - row['Price'] * 1000            
+                        df.at[index, '+pipeg/deltaH']   = df.at[index, '+pipeg'] / df.at[index, 'deltaH']
+                        df.at[index, '+pipeg/deltaM']   = df.at[index, '+pipeg'] / df.at[index, 'deltaM']
+                        df.at[index, '+pipeg/Balance'] = df.at[index, '+pipeg'] / balance
+                        df.at[index, '+pipeg/VB']      = df.at[index, '+pipeg'] / df.at[index, 'V/B']
+                        
+
+                    if row['Type'] == 'Sell':
+                        df.at[index, '-pipeg']         = row['Price_1'] - row['Price'] * 1000
+                        df.at[index, '-pipeg/deltaH']   = df.at[index, '-pipeg'] / df.at[index, 'deltaH']
+                        df.at[index, '-pipeg/deltaM']   = df.at[index, '-pipeg'] / df.at[index, 'deltaM']
+                        df.at[index, '-pipeg/Balance'] = df.at[index, '-pipeg'] / balance
+                        df.at[index, '-pipeg/VB']      = df.at[index, '-pipeg'] / df.at[index, 'V/B']
+
+                if row['Profit'] > 0:
+                    df.at[index, '+P']                 = df.at[index, 'Profit']
+                    df.at[index, '+PP']                = abs(df.at[index, '+P'] * 100) / balance
+                    df.at[index, '+PPVB']              = df.at[index, '+PP'] / df.at[index, 'V/B']
+                    df.at[index, '+PP/deltaH']          = df.at[index, '+PP'] / df.at[index, 'deltaH']
+                    df.at[index, '+PP/deltaM']          = df.at[index, '+PP'] / df.at[index, 'deltaM']
+
+                if row['Profit'] < 0:
+                    df.at[index, '-P']                 = df.at[index, 'Profit']
+                    df.at[index, '-PP']                = abs(df.at[index, '-P'] * 100) / balance
+                    df.at[index, '-PPVB']              = df.at[index, '-PP'] / df.at[index, 'V/B']
+                    df.at[index, '-PP/deltaH']          = df.at[index, '-PP'] / df.at[index, 'deltaH']
+                    df.at[index, '-PP/deltaM']          = df.at[index, '-PP'] / df.at[index, 'deltaM']
+
+                if row['Profit'] == 0:
+                    df.at[index, 'P'] = df.at[index, 'Profit']
+
+                df.at[index, 'ABSPP%VB']               = (df.at[index, 'ABSPP'] * 100) / (df.at[index, 'V/B'])
+                df.at[index, 'deltaH/VB']               =  df.at[index, 'deltaH'] / (df.at[index, 'V/B'])
+                df.at[index, 'deltaM/VB']               =  df.at[index, 'deltaM'] / (df.at[index, 'V/B'])
+                df.at[index, 'ABSPP/deltaH']            =  df.at[index, 'ABSPP'] / df.at[index, 'deltaH']
+                df.at[index, 'ABSPP/deltaM']            =  df.at[index, 'ABSPP'] / df.at[index, 'deltaM']
+                
+        df = df[::-1]
+        
+        if not os.path.exists('data.csv'):
+            df.to_csv('data.csv', mode='w', index=False)
+
+        else:
+            new_columns = ['P', 'T/P', 'S/L']
+            default_values = ['', '', '']
+
+            for col, default_value in zip(new_columns, default_values):
+                df.insert(len(df.columns), col, default_value)
+
+
+            desired = ['Time','Type','Volume','Symbol','Price','S/L','T/P','Time_1','Price_1','Commission','Swap','Profit','Comment','Time_1','name','balance','ABSPP','PP','deltaH','deltaM','ABSpipeg','V/B','-pipeg','-pipeg/deltaH','-pipeg/deltaM','-pipeg/Balance','-pipeg/VB','-P','-PP','-PPVB','-PP/deltaH','-PP/deltaM','ABSPP%VB','deltaH/VB','deltaM/VB','ABSPP/deltaH','ABSPP/deltaM','+P','+PP','+PPVB','+PP/deltaH','+PP/deltaM','+pipeg','+pipeg/deltaH','+pipeg/deltaM','+pipeg/Balance','+pipeg/VB','P']
+            df = df[desired]
+            df.to_csv('data.csv', mode='a', index=False, header=False)
+        
+        return df
+    except ValueError as er:
+        (er)
+
+
+
+
+def analhist(file_list):
+    try:
+        for i in file_list:
+            df = pd.read_csv(i, delimiter=';')
+            df = df[::-1]
+            df['Time']    = pd.to_datetime(df['Time'])
+            df['Time_1']  = pd.to_datetime(df['Time.1'])
+            df            = df.rename(columns={'Price.1': 'Price_1'})
+            df['Profit']  = df['Profit'].astype(str).str.replace(' ', '')
+            df['Profit']  = pd.to_numeric(df['Profit'].str.replace(' ', ''), errors='coerce')
+            df['Price_1'] = df['Price_1'].astype(str).str.replace(' ', '')
+            df['Price_1'] = pd.to_numeric(df['Price_1'].str.replace(' ', ''), errors='coerce')
+            df['Price']   = df['Price'].astype(str).str.replace(' ', '')
+            df['Price']   = pd.to_numeric(df['Price'].str.replace(' ', ''), errors='coerce')
+            df['name'] = i
+            num = 0
+            num2 = 0
+            balance = 0
+            a = 0
+            for index, row in df.iterrows():
+                a = a+1
+                if row['Type'] != 'Balance' and num2 == 0:
+                    num = num + 1
+                    print(f'bog for {i} csv ; no balance start and remove')
+                    break
+
+                if row['Type'] == 'Balance':
+
+                    balance = row['Profit']
+                    num2 = num2 + 1
+                    df = df.drop(index)
+                    continue
+
+                if num2 != 0:
+                    if row['Type'] not in ['Buy', 'Sell']:
+                        df = df.drop(index)
+                        continue
+                    balance = balance + df.at[index , 'Profit']                    
+                    df.at[index, 'balance']                = balance
+                    df.at[index, 'ABSPP']                  = abs(row['Profit'] * 100) / balance
+                    df.at[index, 'PP']                     = (row['Profit'] * 100) / balance
+                    
+                    if (row['Time_1'] - row['Time']).total_seconds() > 0 :
+                        df.at[index, 'deltaH'] = (row['Time_1'] - row['Time']).total_seconds() / 3600
+                        df.at[index, 'deltaM'] = (row['Time_1'] - row['Time']).total_seconds() / 60
+                    else:
+                        df.at[index, 'delta'] = 1 
+
+
+                    df.at[index, 'ABSpipeg']               = abs(row['Price_1'] - row['Price']) * 1000
+                    df.at[index, 'V/B']                    = (row['Volume'] * 100000) / balance
+
+                    if row['Price_1'] - row['Price'] == 0:
+                        df.at[index, 'ABSpipeg'] = 0
+
+                    if row['Price_1'] - row['Price'] > 0:
+                        if row['Type'] == 'Buy':
+                            df.at[index, '+pipeg']         = row['Price_1'] - row['Price'] * 1000            
+                            df.at[index, '+pipeg/deltaH']   = df.at[index, '+pipeg'] / df.at[index, 'deltaH']
+                            df.at[index, '+pipeg/deltaM']   = df.at[index, '+pipeg'] / df.at[index, 'deltaM']
+                            df.at[index, '+pipeg/Balance'] = df.at[index, '+pipeg'] / balance
+                            df.at[index, '+pipeg/VB']      = df.at[index, '+pipeg'] / df.at[index, 'V/B']
+                            
+
+                        if row['Type'] == 'Sell':
+                            df.at[index, '-pipeg']         = row['Price_1'] - row['Price'] * 1000
+                            df.at[index, '-pipeg/deltaH']   = df.at[index, '-pipeg'] / df.at[index, 'deltaH']
+                            df.at[index, '-pipeg/deltaM']   = df.at[index, '-pipeg'] / df.at[index, 'deltaM']
+                            df.at[index, '-pipeg/Balance'] = df.at[index, '-pipeg'] / balance
+                            df.at[index, '-pipeg/VB']      = df.at[index, '-pipeg'] / df.at[index, 'V/B']
+
+                    if row['Profit'] > 0:
+                        df.at[index, '+P']                 = df.at[index, 'Profit']
+                        df.at[index, '+PP']                = abs(df.at[index, '+P'] * 100) / balance
+                        df.at[index, '+PPVB']              = df.at[index, '+PP'] / df.at[index, 'V/B']
+                        df.at[index, '+PP/deltaH']          = df.at[index, '+PP'] / df.at[index, 'deltaH']
+                        df.at[index, '+PP/deltaM']          = df.at[index, '+PP'] / df.at[index, 'deltaM']
+
+                    if row['Profit'] < 0:
+                        df.at[index, '-P']                 = df.at[index, 'Profit']
+                        df.at[index, '-PP']                = abs(df.at[index, '-P'] * 100) / balance
+                        df.at[index, '-PPVB']              = df.at[index, '-PP'] / df.at[index, 'V/B']
+                        df.at[index, '-PP/deltaH']          = df.at[index, '-PP'] / df.at[index, 'deltaH']
+                        df.at[index, '-PP/deltaM']          = df.at[index, '-PP'] / df.at[index, 'deltaM']
+
+                    if row['Profit'] == 0:
+                        df.at[index, 'P'] = df.at[index, 'Profit']
+
+                    df.at[index, 'ABSPP%VB']               = (df.at[index, 'ABSPP'] * 100) / (df.at[index, 'V/B'])
+                    df.at[index, 'deltaH/VB']               =  df.at[index, 'deltaH'] / (df.at[index, 'V/B'])
+                    df.at[index, 'deltaM/VB']               =  df.at[index, 'deltaM'] / (df.at[index, 'V/B'])
+                    df.at[index, 'ABSPP/deltaH']            =  df.at[index, 'ABSPP'] / df.at[index, 'deltaH']
+                    df.at[index, 'ABSPP/deltaM']            =  df.at[index, 'ABSPP'] / df.at[index, 'deltaM']
+                    
+            df = df[::-1]
+            if not os.path.exists('data.csv'):
+                df.to_csv('data.csv', mode='w', index=False)
+                
+            else:
+                df.to_csv('data.csv', mode='a', index=False, header=False)
+            
+            return df 
+            
+    except ValueError as er:
+        (er)
+
+
+
+
+def timePPm(df):
+    st.write('             جدول ترکیب شده سابقه های معاملاتی ')
+    
+    #df = pd.read_csv('data.csv')
+    
+
+    df = df[df['Time'] != 'Time']
+    df = df.sort_values(by = 'Time')
+    df
+
+    df['Time'] = pd.to_datetime(df['Time']) 
+
+    df_start = df['Time'].min() 
+    df_end = df['Time'].max()   
+
+    st.write('#بازه زمانی مورد نظر رو انتخاب کن')
+    # کوچکترین تاریخ
+    min_date = df['Time'].min()
+
+    # بزرگترین تاریخ
+    max_date = df['Time'].max()
+
+
+    start_date = min_date + timedelta(days=1)
+    end_date = max_date - timedelta(days=1)
+
+    date_diff = end_date - start_date 
+
+    if date_diff <= timedelta(days=30):
+        # اختلاف کمتر از 30 روز
+        # تغییری نده
+        # تاریخ شروع را به یک روز بعد از کوچکترین تاریخ تنظیم کنید
+        start_date = min_date + timedelta(days=1)
+    else:
+    # اختلاف بیشتر از 30 روز 
+        start_date = end_date - timedelta(days=30)
+
+
+
+
+    # تنظیم مقادیر پیش‌فرض برای کلیدهای تاریخی
+    
+    start_date = pd.to_datetime(st.date_input(f'Start Date  {df_start}', value=start_date))
+    end_date = pd.to_datetime(st.date_input(f'End Date    {df_end}', value=end_date))
+    
+
+    #start_date = pd.to_datetime(st.date_input(f'Start Date  {df_start}', value=df_start))
+    #end_date = pd.to_datetime(st.date_input(f'End Date    {df_end}', value=df_end))
+
+
+
+
+        
+        # چک کردن محدوده
+    if start_date < df_start or end_date > df_end:
+        st.error("لطفا تاریخی انتخاب کنید بین بازه زمانی   %s       و      %s  " % (df_start, df_end))
+
+    else:
+        mask = (df['Time'] > start_date) & (df['Time'] <= end_date)
+        filtered_df = df.loc[mask]
+        #size = st.slider('Chart Size', min_value=200, max_value=1000, value=400)
+        #fig = px.scatter_gl(filtered_df, x='Time', y='PP', height=600)
+        global ass
+        ass = True
+        
+        return filtered_df
+
+
+def inside(df):
+
+    for index, row in df.iterrows():
+        df.at[index,'ABSPP']                  = abs(df.at[index,'Profit'] * 100) / df.at[index,'balance']
+        df.at[index,'PP']                     =    (df.at[index,'Profit'] * 100) / df.at[index,'balance']
+        df.at[index,'V/B']                    =    (df.at[index,'Volume'] * 100000) / df.at[index,'balance']
+
+        df.at[index,'+pipeg/Balance']        = df.at[index,'+pipeg'] / df.at[index,'balance']
+        df.at[index,'+pipeg/VB']             = df.at[index,'+pipeg'] / df.at[index,'V/B']
+        
+        df.at[index,'-pipeg/Balance']        = df.at[index,'-pipeg'] / df.at[index,'balance']
+        df.at[index,'-pipeg/VB']             = df.at[index,'-pipeg'] / df.at[index,'V/B']
+
+        df.at[index,'+PP']                   = abs(df.at[index,'+P'] * 100) / df.at[index,'balance']
+        df.at[index,'+PPVB']                 = df.at[index,'+PP'] / df.at[index,'V/B']
+        df.at[index,'+PP/deltaH']             = df.at[index,'+PP'] / df.at[index,'deltaH']
+        df.at[index,'+PP/deltaM']             = df.at[index,'+PP'] / df.at[index,'deltaM']
+
+        df.at[index,'-PP']                   = abs(df.at[index,'-P'] * 100) / df.at[index,'balance']
+        df.at[index,'-PPVB']                 = df.at[index,'-PP'] / df.at[index,'V/B']
+        df.at[index,'-PP/deltaH']             = df.at[index,'-PP'] / df.at[index,'deltaH']
+        df.at[index,'-PP/deltaM']             = df.at[index,'-PP'] / df.at[index,'deltaM']
+
+        df.at[index,'ABSPP%VB']               = (df.at[index,'ABSPP'] * 100) / (df.at[index,'V/B'])
+        df.at[index,'deltaH/VB']               =  df.at[index,'deltaH'] / (df.at[index,'V/B'])
+        df.at[index,'deltaM/VB']               =  df.at[index,'deltaM'] / (df.at[index,'V/B'])
+        df.at[index,'ABSPP/deltaH']            =  df.at[index,'ABSPP'] / df.at[index,'deltaH']
+        df.at[index,'ABSPP/deltaM']            =  df.at[index,'ABSPP'] / df.at[index,'deltaM']
+
+
+    return df
+
+
+def mainchart(df): #timePPm()
+    win        = (df['Profit'] > 0).sum()
+    loss       = (df['Profit'] < 0).sum()
+    winrate    = (win * 100) / (win + loss)
+    trades     = len(df)
+    besttrade  = df['PP'].max()
+    worsttrade = df['PP'].min()
+    avgtimetrade = df['deltaM'].mean()
+    longtrade  = (df['Type'] == 'Buy').sum()
+    shorttrade = (df['Type'] == 'Sell').sum()
+    avgProfit  = df['+PP'].mean()
+    avgLoss    = df['-PP'].mean()
+    avgVB      = df['V/B'].mean()
+
+    # عنوان
+    st.title("آمار و اطلاعات معاملات") 
+
+    # ستون‌بندی
+    col1, col2 = st.columns(2)
+
+    # ستون اول  
+    with col1:
+        st.metric("تعداد معاملات", trades)
+        st.metric("درصد موفقیت", f"{winrate:.2f}%")
+        st.metric("میانگین سود به درصد", f"{avgProfit:.2f}")
+        st.metric("میانگین زمان به دقیقه", f"{avgtimetrade:.2f}")
+    
+    # ستون دوم
+    with col2:
+        st.metric("بهترین معامله", f"{besttrade:.2f}%")
+        st.metric("بدترین معامله", f"{worsttrade:.2f}%")  
+        st.metric("میانگین ضرر به درصد", f"{avgLoss:.2f}%")
+        st.metric("میانگین حجم به موجودی", f"{avgVB:.2f}")
+
+    # جدا کننده
+    st.markdown("---")
+
+    # دو ستون 
+    left, right = st.columns(2)
+
+    # ستون سمت چپ
+    with left:
+        st.info(f"تعداد معاملات خرید: {longtrade}")
+
+    # ستون سمت راست   
+    with right:
+        st.info(f"تعداد معاملات فروش: {shorttrade}")
+    
+    labels = 'win trade','loss trade' 
+    sizes = [win, loss]
+    explode = (0, 0.2)  # only "explode" the 2nd slice (i.e. 'Hogs')
+    colors = ['green', 'red']
+
+    fig1, ax1 = plt.subplots()
+    ax1.pie(sizes, explode=explode, labels=labels, autopct='%1.1f%%',
+            shadow=True, startangle=90, colors=colors)
+    ax1.axis('equal')  # Equal aspect ratio ensures that pie is drawn as a circle.
+
+    st.pyplot(fig1)
+    # نمایش دیتافریم   
+    st.dataframe(df.head())
+
+def p_chart_one(df):
+
+    # ایجاد یک دیتافریم خالی برای ذخیره میانگین PP برای هر نماد و نوع تراکنش
+    average_pp_df = pd.DataFrame(columns=['Symbol', 'Type', 'Average Positive PP', 'Average Negative PP'])
+
+    # حلقه برای محاسبه میانگین PP برای تمام نمادها و انواع تراکنش‌ها
+    symbols = df['Symbol'].unique()
+    types = df['Type'].unique()
+
+    for symbol in symbols:
+        for type in types:
+            filtered_df = df[(df['Symbol'] == symbol) & (df['Type'] == type)]
+            average_positive_pp = filtered_df[filtered_df['PP'] > 0]['PP'].mean()
+            average_negative_pp = filtered_df[filtered_df['PP'] < 0]['PP'].mean()
+            # افزودن به دیتافریم با استفاده از دستور loc
+            average_pp_df.loc[len(average_pp_df)] = [symbol, type, average_positive_pp, average_negative_pp]
+
+    # ایجاد نمودار با استفاده از کتابخانه Plotly
+    fig = px.bar(average_pp_df, x='Symbol', y=['Average Positive PP', 'Average Negative PP'],
+                title='Average PP by Symbol and Type (Positive and Negative)',
+                labels={'Symbol': 'Symbol (Type)', 'variable': 'PP Type', 'value': 'Average PP'})
+    fig.update_layout(barmode='group')
+
+    # نمایش نمودار با استفاده از Streamlit
+    st.plotly_chart(fig, width=0, height=700)
+
+    pass
+
+
+#average_pp_df = pd.DataFrame({'Average PP': [average_pp]})
+
+def p_chart_two(df):
+
+    # ایجاد یک دیتافریم خالی برای ذخیره میانگین PP برای هر نماد و نوع تراکنش
+    average_pp_df = pd.DataFrame(columns=['Symbol', 'Type', 'Average Positive PP', 'Average Negative PP'])
+
+    # حلقه برای محاسبه میانگین PP برای تمام نمادها و انواع تراکنش‌ها
+    symbols = df['Symbol'].unique()
+    types = df['Type'].unique()
+
+    for symbol in symbols:
+        for type in types:
+            filtered_df = df[(df['Symbol'] == symbol) & (df['Type'] == type)]
+            average_positive_pp = filtered_df[filtered_df['PP'] > 0]['PP'].sum()
+            average_negative_pp = filtered_df[filtered_df['PP'] < 0]['PP'].sum()
+            # افزودن به دیتافریم با استفاده از دستور loc
+            average_pp_df.loc[len(average_pp_df)] = [symbol, type, average_positive_pp, average_negative_pp]
+
+    # ایجاد چارت میله‌ای با میانگین PP مثبت و منفی با رنگ‌های متفاوت با Matplotlib
+    fig, ax = plt.subplots()
+    bar_width = 0.35
+    bar_positions = range(len(average_pp_df))
+    bar1 = ax.bar(bar_positions, average_pp_df['Average Positive PP'], width=bar_width, label='Positive PP', color='g')
+    bar2 = ax.bar([pos + bar_width for pos in bar_positions], average_pp_df['Average Negative PP'], width=bar_width, label='Negative PP', color='r')
+
+    ax.set_xlabel('Symbol')
+    ax.set_ylabel('PP')
+    ax.set_title('Average PP by Symbol and Type (Positive and Negative)')
+    ax.set_xticks([pos + bar_width / 2 for pos in bar_positions])
+    #ax.set_xticklabels(average_pp_df.apply(lambda row: f"{row['Symbol']}", axis=1))
+    ax.set_xticklabels(average_pp_df.apply(lambda row: f"{row['Symbol']} ({row['Type']})", axis=1), rotation=90)
+
+    ax.legend()
+
+    # نمایش نمودار با استفاده از Streamlit
+    st.pyplot(fig)
+
+
+def time_chart(df):
+    if st.button('نمایش چارت دقیقه'):
+        st.line_chart(df, x='Time', y='deltaM')
+
+    if st.button('نمایش چارت ساعت'):
+        st.line_chart(df, x='Time', y='deltaH')
+        
+
+        
+def p_chart(df):
+    st.title('نمودار تایپ معاملات ')
+
+    result = df.groupby(['Symbol', 'Type']).size().unstack(fill_value=0)
+
+    # اضافه کردن نتایج به دیتافریم اصلی به صورت افقی
+    df = df.join(result, on='Symbol', rsuffix='_count')
+    df = df.drop_duplicates()
+    df = df.drop_duplicates(subset=['Symbol'])
+    st.bar_chart(df,x='Symbol', y =['Buy', 'Sell'] , width=0, height=700 )
+    pass
+
+def pp_chart(df):
+
+    result = df.groupby(['Symbol', 'Type']).size().unstack(fill_value=0)
+
+    # اضافه کردن نتایج به دیتافریم اصلی به صورت افقی
+    df = df.join(result, on='Symbol', rsuffix='_count')
+    
+    #df = df.drop_duplicates(subset=['Symbol'])
+    df['+PPsum'] = df['+PP'].sum()
+    df['-PPsum'] = df['-PP'].sum()
+    df = df.drop_duplicates()
+    st.bar_chart(df,x='Symbol', y =['-PPsum','+PPsum'] , width=0, height=700 )
+
+
+def pp1_chart(df):
+
+    result = df.groupby(['Symbol', 'deltaH']).size().unstack(fill_value=0)
+
+    # اضافه کردن نتایج به دیتافریم اصلی به صورت افقی
+    df = df.join(result, on='Symbol', rsuffix='_count')
+    
+
+    df = df.drop_duplicates()
+    df['Hdelta'] = df['deltaH']
+    st.bar_chart(df,x='Symbol', y = 'Hdelta', width=0, height=700 )
+
+
+def pp2_chart(df):
+
+    result = df.groupby(['Symbol', 'V/B']).size().unstack(fill_value=0)
+
+    # اضافه کردن نتایج به دیتافریم اصلی به صورت افقی
+    df = df.join(result, on='Symbol', rsuffix='_count')
+    
+
+    df = df.drop_duplicates()
+    
+    st.bar_chart(df,x='Symbol', y = 'V/B', width=0, height=700 )
+
+
+def pp3_chart(df):
+    df['cospp'] = df['PP'].cumsum()
+    df['cosvb'] = df['V/B'].cumsum()
+    st.line_chart(df , x = 'Time' , y= 'cospp' ,  width=0, height=700)
+
+
+def main_chart_one(df):
+    # چارت حجم بر زمان         چارت تعداد معاملات باز بر زمان 
+    df['Volume'] = df['Volume'].astype(float)
+    df['Time']    = pd.to_datetime(df['Time'])
+    df['Time_1']  = pd.to_datetime(df['Time.1'])
+    start_time = df['Time'].min() 
+    end_time = df['Time_1'].max()
+
+    times = pd.date_range(start=start_time, end=end_time, freq='10T')
+
+    chart_df = pd.DataFrame()
+
+    chart_df['Time'] = times
+    chart_df['Volume'] = 0
+    chart_df['Volume'] = chart_df['Volume'].astype(float)
+
+    chart_df['OpenTrades'] = 0 
+    chart_df['OpenTrades'] = chart_df['OpenTrades'].astype(float)
+    
+    st.text(f'بازه زمانی شما تشکیل شده از {len(times)} سطر لطفا لحظاتی صبر کنید که پردازش تموم بشه ممنون ')
+    progress_text = "لطفا صبر کنید "
+    my_bar = st.progress(0, text=progress_text)
+    
+    etr = len(times) / 100
+    a = 0
+    b = 0
+    for  t in tqdm(times, desc="Creating chart"):
+        if a == etr :
+            
+            my_bar.progress(b , text=progress_text)
+            b = b+1
+            a = 0
+        volume = 0
+        open_trades = 0
+        
+        
+        a = a+1
+        if (df['Time'].apply(lambda x: x <= t)).any() or (df['Time_1'].apply(lambda x: t <= x)).any():
+            volume      = df.loc[(df['Time'] <= t) & (t <= df['Time_1']), 'Volume'].sum()
+            open_trades = df.loc[(df['Time']<=t) & (t<=df['Time_1'])].shape[0]
+
+        chart_df.loc[chart_df['Time']==t, 'Volume'] = volume
+        chart_df['Volume'] = chart_df['Volume'].astype(float)
+
+        chart_df.loc[chart_df['Time']==t, 'OpenTrades'] = open_trades
+        chart_df['OpenTrades'] = chart_df['OpenTrades'].astype(float)
+
+    
+    st.line_chart(chart_df, x = 'Time' , y = 'Volume' , width=0, height=700 )
+    
+    st.line_chart(chart_df, x = 'Time' , y = 'OpenTrades' , width=0, height=700 )
+
+
+def chart_in_b(df , b):
+
+    for index, row in df.iterrows():
+
+        df.at[index , 'newProfit'] = (df.at[index , 'PP'] * b) / 100
+        df['cosnewProfit'] = df['newProfit'].cumsum()
+
+    st.line_chart(df , x= 'Time' , y= 'cosnewProfit' ,  width=0, height=700 )
+
+
+def main_change(df, selected_symbols,selected_symbols_two):
+
+    # حذف نماد 
+    
+    
+    
+    df_copy = df.copy()
+    
+    
+    df_copy = df_copy[~df_copy['Symbol'].isin(selected_symbols)]
+    
+    
+    st.write("دیتافریم پس از حذف:")
+    df = df_copy
+
+
+    # تغییر مقادیر مطابق با انتخاب کاربر
+    for symbol in selected_symbols_two:
+        # تغییر مقادیر ستون Type
+        df.loc[df['Symbol'] == symbol, 'Type'] = 'Buy' if df.loc[df['Symbol'] == symbol, 'Type'].any() == 'Sell' else 'Sell'
+        # معکوس کردن مقادیر ستون Profit
+        df.loc[df['Symbol'] == symbol, 'Profit'] = -df.loc[df['Symbol'] == symbol, 'Profit']
+        df.loc[df['Symbol'] == symbol, 'PP'] = -df.loc[df['Symbol'] == symbol, 'PP']
+    
+    intbalance = 0
+    z_row = 0
+    for index, row in df.iterrows():
+        
+        if z_row == 0 :
+            df.at[index , 'balance'] = df.at[index , 'balance'] + df.at[index , 'Profit'] 
+            intbalance = df.at[index , 'balance']
+        else:
+            df.at[index , 'balance'] = intbalance + df.at[index , 'Profit']
+            intbalance = df.at[index , 'balance']
+
+            
+    # نمایش دیتافریم تغییر یافته
+    df
+
+    df.to_csv('data_tow.csv', index=False)
+    # تغییر حجم نماد یا کل 
+
+
+    # فیلتر زمان معاملات 
+
+
+
+
+
+st.title('اینجا میتونی هیستوری سیگنال ها رو اپلود کنی')
+
+uploaded_files = st.file_uploader("هیستوری ها رو انتخاب کن", accept_multiple_files=True, type=['csv'] , key= 'up_one')
+uploaded_filess = st.file_uploader("هیستوری ها رو انتخاب کن", accept_multiple_files=True , type=['xlsx'], key= 'up_two')
+
+
+
+file_paths = []
+file_pathss = []
+
+
+
+
+if uploaded_files  or uploaded_filess :
+
+
+    for file in uploaded_files: 
+        df = pd.read_csv(io.StringIO(file.read().decode('utf-8')) , delimiter=';') 
+        df
+        file_name = file.name
+        file_path = file.name 
+        file_paths.append(file_path)
+        df.to_csv(file_name ,sep = ';', index=False )
+        # دسترسی به لیست آدرس فایل ها
+    
+
+    for filee in uploaded_filess: 
+        #df = pd.read_excel(io.StringIO(file.read().decode('utf-8')))
+        df = pd.read_excel(filee)
+        df
+        st.write(df.columns)
+        file_namee = filee.name
+        file_pathh = filee.name 
+        file_pathss.append(file_pathh)
+        #file_namee = os.path.splitext(file.name)[0] + '.csv'
+        file_namee = filee.name
+        df.to_excel(file_namee, index=False )
+        # دسترسی به لیست آدرس فایل ها
+
+
+
+
+
+    st.title('Process Selected Files')
+
+    selected_files = st.multiselect('Select files', uploaded_files , key= 'selc_one')
+    selected_filess = st.multiselect('Select files', uploaded_filess , key = 'selc_two')
+
+    filelist = []
+    filelistt = []
+
+
+
+    
+    if st.button('Process Selected Files'):
+        file_name = 'data.csv'
+
+        # اگر فایل "data.csv" در همان دایرکتوری اسکریپت وجود دارد، آن را پاک کنید
+        if os.path.exists(file_name):
+            os.remove(file_name)
+        for file in selected_files:
+            st.write(f'name file : {file.name}','.....', f'size : {file.size}k')
+            filelist.append(file.name)
+        for filee in selected_filess:
+            st.write(f'name file : {filee.name}','.....', f'size : {filee.size}k')
+            #filename = os.path.splitext(filee.name)[0] + '.csv'
+            filename = filee.name
+            filelistt.append(filename)       
+            # نام فایل برای پاک کردن
+
+
+        if len(filelist) > 0 and len(filelistt) == 0 :
+            analhist(filelist)
+        if len(filelist) > 0 and len(filelistt) > 0 :
+            analhist(filelist)
+            file_convert = convert(filelistt)
+            analhist_two(file_convert)
+        if len(filelist) == 0 and len(filelistt) > 0 :
+            file_convert = convert(filelistt)
+            analhist_two(file_convert)
+
+
+
+        for p in file_paths:
+            if os.path.exists(p):
+                os.remove(p)
+        file_paths.clear()
+
+        for pp in file_pathss:
+            if os.path.exists(pp):
+                os.remove(pp)
+        file_paths.clear()
+
+        #delete_csv_files(csv_directory)
+        #st.success('csv removed ')
+
+
+
+
+
+
+if os.path.exists('data.csv'):
+    dffg = pd.read_csv('data.csv')
+    dffg = dffg.sort_values(by='Time')
+    dffg = dffg.reset_index(drop=True)
+    
+    b =timePPm(dffg)
+    d = inside(b)
+    d
+
+    
+
+    if st.button('اطلاعات اماری ' , key = 'anal' ):
+        mainchart(d)
+
+    time_chart(d)
+
+
+    if st.button('بار چارت معاملات ' , key = 'anal1' ): 
+
+        p_chart(d)
+
+    if st.button('بار چارت سود ضرر هر تایپ در هر نماد ' , key = 'anal1_1' ): 
+
+        p_chart_two(d)
+
+    if st.button('سود ضرر درصدی هر نماد ' , key = 'anal2' ):
+        pp_chart(d)
+    
+    if st.button('مجموع مدت زمان معامله هر نماد ' , key = 'anal3' ):
+        pp1_chart(d)
+
+    if st.button('نسبت حجم معامله به موجودی برای هر نماد ' , key = 'anal4' ):
+        pp2_chart(d)
+
+    if st.button('لاین چارت سود درصدی به زمان ' , key = 'anal5' ):
+        pp3_chart(d)
+
+    if st.button('حجم و معاملات باز بر زمان ' , key = 'anal6' ):
+        main_chart_one(d)
+        
+    number = st.number_input("Insert a number", key= 'anal_1')
+    st.write('The current number is ', number)    
+    if st.button('چارت سود با عدد دلخواه' , key = 'anal7' ):
+
+        chart_in_b(d , number)
+
+    n = d['Symbol'].unique()
+    st.text(f'نماد های موجود این ها هستن لطفا اگر میخاهی نمادی رو معکوس کنی حذف نکن  {n}')
+    selected_symbols = st.multiselect("انتخاب اسمبل‌ها:", d['Symbol'].unique(),key = 'main_change')       
+    nn = d['Symbol'].unique()
+    st.text(f'نماد های مورد نظر برای معکوس سازی رو انتخاب کن  {nn}')
+    selected_symbols_two = st.multiselect("انتخاب نماد ها:", d['Symbol'].unique() , key = 'main_change_two')
+    if st.button(' اعمال حذف و معکوس سازی در دیتافرم' , key = 'anal8' ):
+        if os.path.isfile('data_tow.csv' ):
+            os.remove('data_tow.csv')
+        main_change(d, selected_symbols,selected_symbols_two)
+
+
+
+
+if os.path.exists('data_tow.csv'):
+    st.header('انجام فرایندهای تحلیل رو دیتافرم شخصی سازی شده ')
+    dfff = pd.read_csv('data_tow.csv')
+    bb =timePPm(dfff) 
+    dd = inside(bb)
+    dd
+
+    if st.button('اطلاعات اماری ' , key = 'ass1' ):
+        mainchart(dd)
+
+    time_chart(dd)
+
+    if st.button('بار چارت معاملات ' , key = 'ass2' ): 
+
+        p_chart(dd)
+
+    if st.button('بار چارت سود ضرر هر تایپ در هر نماد ' , key = 'ass1_1' ): 
+
+        p_chart_two(dd)
+
+    if st.button('سود ضرر درصدی هر نماد ' , key = 'ass3' ):
+        pp_chart(dd)
+    
+    if st.button('مجموع مدت زمان معامله هر نماد ' , key = 'ass4' ):
+        pp1_chart(dd)
+
+    if st.button('نسبت حجم معامله به موجودی برای هر نماد ' , key = 'ass5' ):
+        pp2_chart(dd)
+
+    if st.button('لاین چارت سود درصدی به زمان ' , key = 'ass6' ):
+        pp3_chart(dd)
+
+    if st.button('حجم و معاملات باز بر زمان ' , key = 'ass7' ):
+        main_chart_one(dd)
+        
+    numberr = st.number_input("Insert a number" , key= 'ass_1')
+    st.write('The current number is ', numberr)    
+    if st.button('چارت سود با عدد دلخواه' , key = 'ass8' ):
+
+        chart_in_b(dd , numberr)
+
+
+
+
+
+
+
+
+
+
+
+
+
+    
+
+
+

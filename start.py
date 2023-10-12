@@ -7,7 +7,7 @@ st.title('صفحه اصلی')
 
 
 
-st.write(f"Welcome {session.username}!") 
+st.write(f"Welcome !") 
 
 
 

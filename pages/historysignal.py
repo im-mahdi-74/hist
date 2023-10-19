@@ -1,18 +1,14 @@
 import streamlit as st
 import pandas as pd
 import plotly.express as px
-import datetime
 import io 
-import numpy as np
-import plotly.graph_objects as go
 from datetime import timedelta
 import matplotlib.pyplot as plt
 from tqdm import tqdm
-import time
 import threading as threading
-import os
-import csv
-from pathlib import Path
+import plotly.express as px
+import numpy as np
+
 #def num trade in 
 
 st.title('اینجا میتونی هیستوری سیگنال ها رو اپلود کنی')
@@ -182,36 +178,49 @@ def analhist_two(file_list):
                 if row['Price_1'] - row['Price'] == 0:
                     df.at[index, 'ABSpipeg'] = 0
 
-                if row['Price_1'] - row['Price'] > 0:
+                if row['Price_1'] - row['Price'] > 0 :
                     if row['Type'] == 'Buy':
-                        df.at[index, '+pipeg']         = row['Price_1'] - row['Price'] * 1000            
+                        df.at[index, '+pipeg']          = row['Price_1'] - row['Price'] * 1000            
                         df.at[index, '+pipeg/deltaH']   = df.at[index, '+pipeg'] / df.at[index, 'deltaH']
                         df.at[index, '+pipeg/deltaM']   = df.at[index, '+pipeg'] / df.at[index, 'deltaM']
-                        df.at[index, '+pipeg/Balance'] = df.at[index, '+pipeg'] / balance
-                        df.at[index, '+pipeg/VB']      = df.at[index, '+pipeg'] / df.at[index, 'V/B']
+                        df.at[index, '+pipeg/Balance']  = df.at[index, '+pipeg'] / balance
+                        df.at[index, '+pipeg/VB']       = df.at[index, '+pipeg'] / df.at[index, 'V/B']
                         
 
                     if row['Type'] == 'Sell':
-                        df.at[index, '-pipeg']         = row['Price_1'] - row['Price'] * 1000
+                        df.at[index, '-pipeg']          = row['Price_1'] - row['Price'] * 1000
                         df.at[index, '-pipeg/deltaH']   = df.at[index, '-pipeg'] / df.at[index, 'deltaH']
                         df.at[index, '-pipeg/deltaM']   = df.at[index, '-pipeg'] / df.at[index, 'deltaM']
-                        df.at[index, '-pipeg/Balance'] = df.at[index, '-pipeg'] / balance
-                        df.at[index, '-pipeg/VB']      = df.at[index, '-pipeg'] / df.at[index, 'V/B']
+                        df.at[index, '-pipeg/Balance']  = df.at[index, '-pipeg'] / balance
+                        df.at[index, '-pipeg/VB']       = df.at[index, '-pipeg'] / df.at[index, 'V/B']
+                if row['Price_1'] - row['Price'] < 0 :
+                    if row['Type'] == 'Sell':
+                        df.at[index, '+pipeg']          = row['Price_1'] - row['Price'] * 1000            
+                        df.at[index, '+pipeg/deltaH']   = df.at[index, '+pipeg'] / df.at[index, 'deltaH']
+                        df.at[index, '+pipeg/deltaM']   = df.at[index, '+pipeg'] / df.at[index, 'deltaM']
+                        df.at[index, '+pipeg/Balance']  = df.at[index, '+pipeg'] / balance
+                        df.at[index, '+pipeg/VB']       = df.at[index, '+pipeg'] / df.at[index, 'V/B']
+                    
 
+                    if row['Type'] == 'Buy':
+                        df.at[index, '-pipeg']              = row['Price_1'] - row['Price'] * 1000
+                        df.at[index, '-pipeg/deltaH']       = df.at[index, '-pipeg'] / df.at[index, 'deltaH']
+                        df.at[index, '-pipeg/deltaM']       = df.at[index, '-pipeg'] / df.at[index, 'deltaM']
+                        df.at[index, '-pipeg/Balance']      = df.at[index, '-pipeg'] / balance
+                        df.at[index, '-pipeg/VB']           = df.at[index, '-pipeg'] / df.at[index, 'V/B']
                 if row['Profit'] > 0:
-                    df.at[index, '+P']                 = df.at[index, 'Profit']
-                    df.at[index, '+PP']                = abs(df.at[index, '+P'] * 100) / balance
-                    df.at[index, '+PPVB']              = df.at[index, '+PP'] / df.at[index, 'V/B']
+                    df.at[index, '+P']                  = df.at[index, 'Profit']
+                    df.at[index, '+PP']                 = abs(df.at[index, '+P'] * 100) / balance
+                    df.at[index, '+PPVB']               = df.at[index, '+PP'] / df.at[index, 'V/B']
                     df.at[index, '+PP/deltaH']          = df.at[index, '+PP'] / df.at[index, 'deltaH']
                     df.at[index, '+PP/deltaM']          = df.at[index, '+PP'] / df.at[index, 'deltaM']
 
                 if row['Profit'] < 0:
-                    df.at[index, '-P']                 = df.at[index, 'Profit']
-                    df.at[index, '-PP']                = abs(df.at[index, '-P'] * 100) / balance
-                    df.at[index, '-PPVB']              = df.at[index, '-PP'] / df.at[index, 'V/B']
+                    df.at[index, '-P']                  = df.at[index, 'Profit']
+                    df.at[index, '-PP']                 = abs(df.at[index, '-P'] * 100) / balance
+                    df.at[index, '-PPVB']               = df.at[index, '-PP'] / df.at[index, 'V/B']
                     df.at[index, '-PP/deltaH']          = df.at[index, '-PP'] / df.at[index, 'deltaH']
                     df.at[index, '-PP/deltaM']          = df.at[index, '-PP'] / df.at[index, 'deltaM']
-
                 if row['Profit'] == 0:
                     df.at[index, 'P'] = df.at[index, 'Profit']
 
@@ -302,40 +311,55 @@ def analhist(file_list):
                         if row['Price_1'] - row['Price'] == 0:
                             df.at[index, 'ABSpipeg'] = 0
 
-                        if row['Price_1'] - row['Price'] > 0:
+                        if row['Price_1'] - row['Price'] > 0 :
                             if row['Type'] == 'Buy':
-                                df.at[index, '+pipeg']         = row['Price_1'] - row['Price'] * 1000            
+                                df.at[index, '+pipeg']          = row['Price_1'] - row['Price'] * 1000            
                                 df.at[index, '+pipeg/deltaH']   = df.at[index, '+pipeg'] / df.at[index, 'deltaH']
                                 df.at[index, '+pipeg/deltaM']   = df.at[index, '+pipeg'] / df.at[index, 'deltaM']
-                                df.at[index, '+pipeg/Balance'] = df.at[index, '+pipeg'] / balance
-                                df.at[index, '+pipeg/VB']      = df.at[index, '+pipeg'] / df.at[index, 'V/B']
+                                df.at[index, '+pipeg/Balance']  = df.at[index, '+pipeg'] / balance
+                                df.at[index, '+pipeg/VB']       = df.at[index, '+pipeg'] / df.at[index, 'V/B']
                                 
 
                             if row['Type'] == 'Sell':
-                                df.at[index, '-pipeg']         = row['Price_1'] - row['Price'] * 1000
+                                df.at[index, '-pipeg']          = row['Price_1'] - row['Price'] * 1000
                                 df.at[index, '-pipeg/deltaH']   = df.at[index, '-pipeg'] / df.at[index, 'deltaH']
                                 df.at[index, '-pipeg/deltaM']   = df.at[index, '-pipeg'] / df.at[index, 'deltaM']
-                                df.at[index, '-pipeg/Balance'] = df.at[index, '-pipeg'] / balance
-                                df.at[index, '-pipeg/VB']      = df.at[index, '-pipeg'] / df.at[index, 'V/B']
+                                df.at[index, '-pipeg/Balance']  = df.at[index, '-pipeg'] / balance
+                                df.at[index, '-pipeg/VB']       = df.at[index, '-pipeg'] / df.at[index, 'V/B']
+                        if row['Price_1'] - row['Price'] < 0 :
+                            if row['Type'] == 'Sell':
+                                df.at[index, '+pipeg']          = row['Price_1'] - row['Price'] * 1000            
+                                df.at[index, '+pipeg/deltaH']   = df.at[index, '+pipeg'] / df.at[index, 'deltaH']
+                                df.at[index, '+pipeg/deltaM']   = df.at[index, '+pipeg'] / df.at[index, 'deltaM']
+                                df.at[index, '+pipeg/Balance']  = df.at[index, '+pipeg'] / balance
+                                df.at[index, '+pipeg/VB']       = df.at[index, '+pipeg'] / df.at[index, 'V/B']
+                            
+
+                            if row['Type'] == 'Buy':
+                                df.at[index, '-pipeg']              = row['Price_1'] - row['Price'] * 1000
+                                df.at[index, '-pipeg/deltaH']       = df.at[index, '-pipeg'] / df.at[index, 'deltaH']
+                                df.at[index, '-pipeg/deltaM']       = df.at[index, '-pipeg'] / df.at[index, 'deltaM']
+                                df.at[index, '-pipeg/Balance']      = df.at[index, '-pipeg'] / balance
+                                df.at[index, '-pipeg/VB']           = df.at[index, '-pipeg'] / df.at[index, 'V/B']
 
                         if row['Profit'] > 0:
-                            df.at[index, '+P']                 = df.at[index, 'Profit']
-                            df.at[index, '+PP']                = abs(df.at[index, '+P'] * 100) / balance
-                            df.at[index, '+PPVB']              = df.at[index, '+PP'] / df.at[index, 'V/B']
+                            df.at[index, '+P']                  = df.at[index, 'Profit']
+                            df.at[index, '+PP']                 = abs(df.at[index, '+P'] * 100) / balance
+                            df.at[index, '+PPVB']               = df.at[index, '+PP'] / df.at[index, 'V/B']
                             df.at[index, '+PP/deltaH']          = df.at[index, '+PP'] / df.at[index, 'deltaH']
                             df.at[index, '+PP/deltaM']          = df.at[index, '+PP'] / df.at[index, 'deltaM']
 
                         if row['Profit'] < 0:
-                            df.at[index, '-P']                 = df.at[index, 'Profit']
-                            df.at[index, '-PP']                = abs(df.at[index, '-P'] * 100) / balance
-                            df.at[index, '-PPVB']              = df.at[index, '-PP'] / df.at[index, 'V/B']
+                            df.at[index, '-P']                  = df.at[index, 'Profit']
+                            df.at[index, '-PP']                 = abs(df.at[index, '-P'] * 100) / balance
+                            df.at[index, '-PPVB']               = df.at[index, '-PP'] / df.at[index, 'V/B']
                             df.at[index, '-PP/deltaH']          = df.at[index, '-PP'] / df.at[index, 'deltaH']
                             df.at[index, '-PP/deltaM']          = df.at[index, '-PP'] / df.at[index, 'deltaM']
 
                         if row['Profit'] == 0:
                             df.at[index, 'P'] = df.at[index, 'Profit']
 
-                        df.at[index, 'ABSPP%VB']               = (df.at[index, 'ABSPP'] * 100) / (df.at[index, 'V/B'])
+                        df.at[index, 'ABSPP%VB']                = (df.at[index, 'ABSPP'] * 100) / (df.at[index, 'V/B'])
                         df.at[index, 'deltaH/VB']               =  df.at[index, 'deltaH'] / (df.at[index, 'V/B'])
                         df.at[index, 'deltaM/VB']               =  df.at[index, 'deltaM'] / (df.at[index, 'V/B'])
                         df.at[index, 'ABSPP/deltaH']            =  df.at[index, 'ABSPP'] / df.at[index, 'deltaH']
@@ -429,31 +453,31 @@ def timePPm(df):
 def inside(df):
 
     for index, row in df.iterrows():
-        df.at[index,'ABSPP']                  = abs(df.at[index,'Profit'] * 100) / df.at[index,'balance']
-        df.at[index,'PP']                     =    (df.at[index,'Profit'] * 100) / df.at[index,'balance']
-        df.at[index,'V/B']                    =    (df.at[index,'Volume'] * 100000) / df.at[index,'balance']
-
-        df.at[index,'+pipeg/Balance']        = df.at[index,'+pipeg'] / df.at[index,'balance']
-        df.at[index,'+pipeg/VB']             = df.at[index,'+pipeg'] / df.at[index,'V/B']
+        df.at[index,'ABSPP']                = abs(row['Profit'] * 100) / df.at[index,'balance']
+        df.at[index,'PP']                   =    (row['Profit'] * 100) / df.at[index,'balance']
+        df.at[index,'V/B']                  =    (row['Volume'] * 100000) / df.at[index,'balance']
+                                                
+        df.at[index,'+pipeg/Balance']        =    row['+pipeg'] / df.at[index,'balance']
+        df.at[index,'+pipeg/VB']             =    row['+pipeg'] / df.at[index,'V/B']
         
-        df.at[index,'-pipeg/Balance']        = df.at[index,'-pipeg'] / df.at[index,'balance']
-        df.at[index,'-pipeg/VB']             = df.at[index,'-pipeg'] / df.at[index,'V/B']
+        df.at[index,'-pipeg/Balance']        =    row['-pipeg'] / df.at[index,'balance']
+        df.at[index,'-pipeg/VB']             =    row['-pipeg'] / df.at[index,'V/B']
 
-        df.at[index,'+PP']                   = abs(df.at[index,'+P'] * 100) / df.at[index,'balance']
-        df.at[index,'+PPVB']                 = df.at[index,'+PP'] / df.at[index,'V/B']
-        df.at[index,'+PP/deltaH']             = df.at[index,'+PP'] / df.at[index,'deltaH']
-        df.at[index,'+PP/deltaM']             = df.at[index,'+PP'] / df.at[index,'deltaM']
+        df.at[index,'+PP']                  = abs(row['+P'] * 100) / df.at[index,'balance']
+        df.at[index,'+PPVB']                 =    row['+PP'] / df.at[index,'V/B']
+        df.at[index,'+PP/deltaH']             =   row['+PP'] / df.at[index,'deltaH']
+        df.at[index,'+PP/deltaM']             =   row['+PP'] / df.at[index,'deltaM']
 
-        df.at[index,'-PP']                   = abs(df.at[index,'-P'] * 100) / df.at[index,'balance']
-        df.at[index,'-PPVB']                 = df.at[index,'-PP'] / df.at[index,'V/B']
-        df.at[index,'-PP/deltaH']             = df.at[index,'-PP'] / df.at[index,'deltaH']
-        df.at[index,'-PP/deltaM']             = df.at[index,'-PP'] / df.at[index,'deltaM']
+        df.at[index,'-PP']                  = abs(row['-P'] * 100) / df.at[index,'balance']
+        df.at[index,'-PPVB']                 =    row['-PP'] / df.at[index,'V/B']
+        df.at[index,'-PP/deltaH']             =   row['-PP'] / df.at[index,'deltaH']
+        df.at[index,'-PP/deltaM']             =   row['-PP'] / df.at[index,'deltaM']
 
-        df.at[index,'ABSPP%VB']               = (df.at[index,'ABSPP'] * 100) / (df.at[index,'V/B'])
-        df.at[index,'deltaH/VB']               =  df.at[index,'deltaH'] / (df.at[index,'V/B'])
-        df.at[index,'deltaM/VB']               =  df.at[index,'deltaM'] / (df.at[index,'V/B'])
-        df.at[index,'ABSPP/deltaH']            =  df.at[index,'ABSPP'] / df.at[index,'deltaH']
-        df.at[index,'ABSPP/deltaM']            =  df.at[index,'ABSPP'] / df.at[index,'deltaM']
+        df.at[index,'ABSPP%VB']               = (row['ABSPP'] * 100) / (df.at[index,'V/B'])
+        df.at[index,'deltaH/VB']               =  row['deltaH'] / (df.at[index,'V/B'])
+        df.at[index,'deltaM/VB']               =  row['deltaM'] / (df.at[index,'V/B'])
+        df.at[index,'ABSPP/deltaH']            =  row['ABSPP'] / df.at[index,'deltaH']
+        df.at[index,'ABSPP/deltaM']            =  row['ABSPP'] / df.at[index,'deltaM']
 
 
     return df
@@ -650,19 +674,40 @@ def pp2_chart(df):
 def pp3_chart(df):
     df['cospp'] = df['PP'].cumsum()
     df['cosvb'] = df['V/B'].cumsum()
-    st.line_chart(df , x = 'Time' , y= 'cospp' ,  width=0, height=700)
-    fige = px.scatter(df, x='PP', y='V/B')
-    fige.update_layout(width=700, height=1100)
+    st.line_chart(df , x = 'Time' , y= 'cospp' ,  width=800, height=700)
+    colorscale = [[0, 'rgb(255,0,0)'], [0.5, 'rgb(255,255,0)'], [1, 'rgb(0,128,0)']] 
+    fige = px.scatter(df, x='PP', y='V/B' )
+    fige.update_traces(
+        marker = dict(
+            color = np.select([df['PP']<0, df['PP']>0], 
+                            [df['PP'], df['PP']], 0),
+            colorscale = colorscale,
+            showscale = True
+        )
+    )
+    fige.update_layout(width=800, height=1100)
     #fige.update_traces(marker=dict(size=2))
     st.plotly_chart(fige)
-    fig = px.scatter_3d(df, x='PP', y='V/B', z='deltaM' )
-    fig.update_layout(width=700, height=1100)
-    fig.update_traces(marker=dict(size=2))
+
+    size_min = 1  # حداقل اندازه نقاط
+    size_max = 2 # حداکثر اندازه نقاط
+
+    # نگاشت مقادیر PP به بازه اندازه‌ها
+    df['point_size'] = 1 #df['PP'].apply(lambda x: size_min + (size_max - size_min) * (x - df['PP'].min()) / (df['PP'].max() - df['PP'].min()))
+
+    # ساخت نمودار با اندازه‌های متغیر برای نقاط
+    fig = px.scatter_3d(df, x='PP', y='V/B', z='deltaM', color='PP', 
+                        color_continuous_scale='RdYlGn', size='point_size')
+    fig.update_layout(width=800, height=1100)
+
+    # تنظیم نمودار رنگی
+    fig.update_coloraxes(colorbar_title='PP', cmin=df['PP'].min(), cmax=df['PP'].max())
+
     st.plotly_chart(fig)
 
-#@st.cache_data(ttl='1h', max_entries=2, experimental_allow_widgets=True)
+    #@st.cache_data(ttl='1h', max_entries=2, experimental_allow_widgets=True)
 
-#def اتو اسکیل ایجاد
+    #def اتو اسکیل ایجاد
 
 
 def Dchart(df,x_col,y_col,z_col):
@@ -915,24 +960,25 @@ main_app()
 if 'analhist' in st.session_state or 'analhist_two' in st.session_state :
 
 
-    if 'analhist' in st.session_state and 'analhist_tow' not in st.session_state :
-
-        dffg = st.session_state['analhist']
-
-    if 'analhist_tow' in st.session_state and 'analhist' not in st.session_state:
-
-        dffg = st.session_state['analhist_tow']
-
-
-    if 'analhist' in st.session_state and 'analhist_two' in st.session_state:
-        # دریافت دیتافریمها از st.session_state
+    if 'analhist' in st.session_state and 'analhist_two' in st.session_state :
         df1 = st.session_state.analhist
         df2 = st.session_state.analhist_two
 
-        # ترکیب دو دیتافریم
+    # ترکیب دو دیتافریم
         dffg = pd.concat([df1, df2])
 
-        # بازسازی ستون index
+    else:
+
+        if 'analhist' in st.session_state: 
+            dffg = st.session_state.analhist
+
+        if 'analhist_two' in st.session_state:
+
+            dffg = st.session_state.analhist_two
+
+
+
+    # بازسازی ستون index
         
     
 

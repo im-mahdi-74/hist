@@ -1,6 +1,7 @@
 import streamlit as st
 import pandas as pd
 import plotly.express as px
+import plotly.graph_objects as go
 import io 
 from datetime import timedelta
 import matplotlib.pyplot as plt
@@ -676,7 +677,7 @@ def pp3_chart(df):
     df['cosvb'] = df['V/B'].cumsum()
     st.line_chart(df , x = 'Time' , y= 'cospp' ,  width=800, height=700)
     colorscale = [[0, 'rgb(255,0,0)'], [0.5, 'rgb(255,255,0)'], [1, 'rgb(0,128,0)']] 
-    fige = px.scatter(df, x='PP', y='V/B' )
+    fige = px.scatter(df, x='V/B', y='PP' )
     fige.update_traces(
         marker = dict(
             color = np.select([df['PP']<0, df['PP']>0], 
@@ -688,6 +689,102 @@ def pp3_chart(df):
     fige.update_layout(width=800, height=1100)
     #fige.update_traces(marker=dict(size=2))
     st.plotly_chart(fige)
+
+
+
+
+
+
+    colorscale = [[0, 'rgb(255,0,0)'], [0.5, 'rgb(255,255,0)'], [1, 'rgb(0,128,0)']] 
+    figen = px.scatter(df, x='Time', y='PP' )
+    figen.update_traces(
+        marker = dict(
+            color = np.select([df['PP']<0, df['PP']>0], 
+                            [df['PP'], df['PP']], 0),
+            colorscale = colorscale,
+            showscale = True
+        )
+    )
+    figen.update_layout(width=800, height=1100)
+    #fige.update_traces(marker=dict(size=2))
+    st.plotly_chart(figen)
+
+
+
+
+
+
+
+
+
+
+
+
+    dfr = df
+    dfr.fillna(0, inplace=True)
+
+    p = dfr['-PP']
+    p = -p
+
+    fig = px.line(dfr, x='Time', y=['+PP', p], 
+                color_discrete_map={'Column1': 'green', 'Column2': 'red'},
+                template='presentation',  width=900, height=750 , line_shape='hv')
+
+
+    fig.update_traces(line=dict(width=2))
+    st.plotly_chart(fig)
+
+
+
+
+
+
+
+    dfs = df
+    dfs.fillna(0, inplace=True)
+    ps = dfs['-PP'].cumsum()
+    ps = -ps
+    pps = dfs['+PP'].cumsum()
+
+    figs = px.line(dfs, x='Time', y=[pps, ps], 
+                color_discrete_map={'Column1': 'green', 'Column2': 'red'},
+                template='presentation',  width=900, height=750 , line_shape='hv')
+
+    ys = dfs['PP'].cumsum()
+    new_line = px.line(dfs, x='Time', y= ys , color_discrete_sequence=['blue']).data[0]
+    figs.add_trace(new_line)
+
+    # تنظیمات بیشتر
+    figs.update_layout(title='My Plot')
+    figs.update_xaxes(title_text='Time')
+    figs.update_traces(line=dict(width=2))
+    st.plotly_chart(figs)
+
+    psa = dfs['-PP'].cumsum()
+    psa = -psa
+    ppsa = dfs['+PP'].cumsum()
+    ysa = dfs['PP'].cumsum()
+
+    figsf = px.scatter(dfs, x='Time', y=[ppsa, psa , ysa], 
+                    color_discrete_map={'ppsa': 'green', 'psa': 'red' , 'ysa' : 'blue'},  
+                    template='presentation',  
+                    width=900, height=750)
+
+ 
+    figsf.update_traces(marker_size=4) 
+    figsf.data[0].marker.color = 'green'  
+    figsf.data[1].marker.color = 'red'  
+    figsf.data[2].marker.color = 'blue'  
+    figsf.update_layout(title='My Plot')
+    figsf.update_xaxes(title_text='Time') 
+
+    st.plotly_chart(figsf)
+
+
+
+
+
+
 
     size_min = 1  # حداقل اندازه نقاط
     size_max = 2 # حداکثر اندازه نقاط
@@ -710,6 +807,39 @@ def pp3_chart(df):
     #def اتو اسکیل ایجاد
 
 
+def pp4_chart(df):
+
+    colorscale = [[0, 'rgb(255,0,0)'], [0.5, 'rgb(255,255,0)'], [1, 'rgb(0,128,0)']]
+
+    # داده‌های دیگر برای نمودار سوم (خطی)
+    dfr = df.copy()
+    dfr.fillna(0, inplace=True)
+    p = -dfr['-PP']
+
+    # ایجاد یک چارت ترکیبی
+    fig = go.Figure()
+
+    # اضافه کردن نمودار خطی (line)
+    fig.add_trace(go.Scatter(x=dfr['Time'], y=dfr['+PP'], line=dict(color='green'), name='خط 1 (سبز)'))
+
+    # اضافه کردن نمودار scatter
+    fig.add_trace(go.Scatter(x=dfr['Time'], y=p, mode='markers', marker=dict(
+        color=df['PP'],
+        colorscale=colorscale,
+        size=8,
+        showscale=True
+    ), name='خط 2 (قرمز)'))
+
+    fig.update_layout(
+        template='presentation',
+        width=900,
+        height=750
+    )
+    fig.update_traces(line=dict(width=2))
+
+    # نمایش چارت ترکیبی در Streamlit
+    st.plotly_chart(fig)
+
 def Dchart(df,x_col,y_col,z_col):
 
     
@@ -727,6 +857,18 @@ def Dchart(df,x_col,y_col,z_col):
         fig_3d.update_traces(marker=dict(size=2))
         st.plotly_chart(fig_3d)
 
+def pl_chart(df):
+
+    df.fillna(0, inplace=True)
+    p = df['-PP']
+    p = -p
+    fig = px.line(df, x='Time', y=['+PP', p], 
+                color_discrete_map={'Column1': 'green', 'Column2': 'red'},
+                template='simple_white', width=800, height=700)
+
+    fig.update_traces(line=dict(width=2))
+
+    st.plotly_chart(fig)
 
 
 def main_chart_one(df):
@@ -821,6 +963,17 @@ def main_change(df, selected_symbols,selected_symbols_two):
         # معکوس کردن مقادیر ستون Profit
         df.loc[df['Symbol'] == symbol, 'Profit'] = -df.loc[df['Symbol'] == symbol, 'Profit']
         df.loc[df['Symbol'] == symbol, 'PP'] = -df.loc[df['Symbol'] == symbol, 'PP']
+    
+     
+    df = df.rename(columns={'+P': 'temp1', 
+                            '+PP': 'temp2',
+                            '-P': 'temp3',
+                            '-PP': 'temp4'})
+
+    df = df.rename(columns={'temp1': '-P', 
+                            'temp2': '-PP', 
+                            'temp3': '+P',
+                            'temp4': '+PP'})
     
     intbalance = 0
     z_row = 0
@@ -1001,6 +1154,10 @@ if 'analhist' in st.session_state or 'analhist_two' in st.session_state :
     x_col = st.selectbox('Select X column', d.columns, key= 'x_col')
     y_col = st.selectbox('Select Y column', d.columns, key = 'y_col')
     z_col = st.selectbox('Select Z column (optional)', d.columns, key= 'z_col')
+
+
+
+
     if st.button('ساخت نمودار دلخواه دو بعدی و سه بعدی' , key = 'Dchart'):
         Dchart(d,x_col,y_col,z_col)
 
@@ -1062,6 +1219,12 @@ if 'data_tow' in st.session_state:
 
     if st.button('اطلاعات اماری ' , key = 'ass1' ):
         mainchart(dd)
+
+
+    if st.button('چارت های پیشنهادی ' , key = 'anal5_1' ):
+        pp3_chart(dd)
+
+
 
     if st.button('لاین چارت سود درصدی به زمان ' , key = 'ass6' ):
         pp3_chart(dd)

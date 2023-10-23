@@ -14,8 +14,7 @@ import numpy as np
 
 st.title('اینجا میتونی هیستوری سیگنال ها رو اپلود کنی')
  
-
-
+  
 
 @st.cache_data(ttl='1h' , max_entries=2 )
 def convert(dfe):
@@ -612,11 +611,11 @@ def p_chart_two(df):
 
 
 def time_chart(df):
-    if st.button('نمایش چارت دقیقه'):
-        st.line_chart(df, x='Time', y='deltaM', width=0, height=700)
+    st.write('نمایش چارت دقیقه')
+    st.line_chart(df, x='Time', y='deltaM', width=0, height=700)
 
-    if st.button('نمایش چارت ساعت'):
-        st.line_chart(df, x='Time', y='deltaH', width=0, height=700)
+    st.write('نمایش چارت ساعت')
+    st.line_chart(df, x='Time', y='deltaH', width=0, height=700)
         
         
 def p_chart(df):
@@ -676,6 +675,11 @@ def pp3_chart(df):
     df['cospp'] = df['PP'].cumsum()
     df['cosvb'] = df['V/B'].cumsum()
     st.line_chart(df , x = 'Time' , y= 'cospp' ,  width=800, height=700)
+
+
+
+
+
     colorscale = [[0, 'rgb(255,0,0)'], [0.5, 'rgb(255,255,0)'], [1, 'rgb(0,128,0)']] 
     fige = px.scatter(df, x='V/B', y='PP' )
     fige.update_traces(
@@ -713,7 +717,26 @@ def pp3_chart(df):
 
 
 
+    st.write('نمودار تایم پوزیشن و پیپیچ')
 
+    fifo = px.line(df , x = 'Time' , y= 'ABSpipeg' ,  width=800, height=800)
+
+
+    st.plotly_chart(fifo)
+
+    pip_va = px.scatter(df , x='PP' , y = 'ABSpipeg')
+    pip_va.update_layout(width=800, height=1100)
+    st.plotly_chart(pip_va)
+
+
+
+    pip_v = px.scatter(df , x='V/B' , y = 'ABSpipeg')
+    pip_v.update_layout(width=800, height=1100)
+    st.plotly_chart(pip_v)
+
+    pip_vv = px.scatter(df , x='deltaM' , y = 'ABSpipeg')
+    pip_vv.update_layout(width=800, height=1100)
+    st.plotly_chart(pip_vv)
 
 
 
@@ -794,7 +817,7 @@ def pp3_chart(df):
 
     # ساخت نمودار با اندازه‌های متغیر برای نقاط
     fig = px.scatter_3d(df, x='PP', y='V/B', z='deltaM', color='PP', 
-                        color_continuous_scale='RdYlGn', size='point_size')
+                        color_continuous_scale='RdYlGn', size='2')
     fig.update_layout(width=800, height=1100)
 
     # تنظیم نمودار رنگی
@@ -840,10 +863,16 @@ def pp4_chart(df):
     # نمایش چارت ترکیبی در Streamlit
     st.plotly_chart(fig)
 
+
 def Dchart(df,x_col,y_col,z_col):
 
     
     if x_col and y_col :
+
+        fig_line = px.line(df , x=x_col, y=y_col )
+        fig_line.update_layout(width=700, height=1000)
+        fig_line.update_traces(marker=dict(size=2))
+        st.plotly_chart(fig_line)
 
         fig_2d = px.scatter(df, x=x_col, y=y_col)
         fig_2d.update_layout(width=700, height=1000)
@@ -856,6 +885,7 @@ def Dchart(df,x_col,y_col,z_col):
         fig_3d.update_layout(width=700, height=1000)
         fig_3d.update_traces(marker=dict(size=2))
         st.plotly_chart(fig_3d)
+
 
 def pl_chart(df):
 
@@ -951,6 +981,17 @@ def main_change(df, selected_symbols,selected_symbols_two):
     
     st.write("دیتافریم پس از حذف:")
     df = df_copy
+    df = df.rename(columns={'+P': 'temp1', 
+                            '+PP': 'temp2',
+                            '-P': 'temp3',
+                            '-PP': 'temp4'})
+
+    df = df.rename(columns={'temp1': '-P', 
+                            'temp2': '-PP', 
+                            'temp3': '+P',
+                            'temp4': '+PP'})
+
+
 
 
     # تغییر مقادیر مطابق با انتخاب کاربر
@@ -965,15 +1006,7 @@ def main_change(df, selected_symbols,selected_symbols_two):
         df.loc[df['Symbol'] == symbol, 'PP'] = -df.loc[df['Symbol'] == symbol, 'PP']
     
      
-    df = df.rename(columns={'+P': 'temp1', 
-                            '+PP': 'temp2',
-                            '-P': 'temp3',
-                            '-PP': 'temp4'})
 
-    df = df.rename(columns={'temp1': '-P', 
-                            'temp2': '-PP', 
-                            'temp3': '+P',
-                            'temp4': '+PP'})
     
     intbalance = 0
     z_row = 0
@@ -1142,6 +1175,7 @@ if 'analhist' in st.session_state or 'analhist_two' in st.session_state :
     
     b =timePPm(dffg)
     d = inside(b)
+    d = d[d['deltaM'] <= 600]
     d
     
 
@@ -1269,7 +1303,7 @@ if 'data_tow' in st.session_state:
 
 
 
-    
+
 
 
 

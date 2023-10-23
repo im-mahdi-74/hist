@@ -1,3 +1,4 @@
+
 import streamlit as st
 import pandas as pd
 import plotly.express as px
@@ -1293,16 +1294,6 @@ if 'data_tow' in st.session_state:
     if st.button('چارت سود با عدد دلخواه' , key = 'ass8' ):
 
         chart_in_b(dd , numberr)
-
-
-
-
-
-
-
-
-
-
 
 
 

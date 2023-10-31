@@ -3,6 +3,16 @@ import streamlit as st
 import numpy as np
 import time
 import random
+import dash
+from dash.dependencies import Output, Input
+import dash_core_components as dcc
+import dash_html_components as html
+import plotly
+import random
+import plotly.graph_objs as go
+import MetaTrader5 as mt5  # pip install MetaTrader5
+import time
+
 
 def one():
     # Create a function to generate random data
@@ -74,37 +84,27 @@ def tre():
     st.button("Re-run")
 
 
-import dash
-from dash.dependencies import Output, Input
-import dash_core_components as dcc
-import dash_html_components as html
-import plotly
-import random
-import plotly.graph_objs as go
-from collections import deque
+st.title('## live chart !!!')
 
-
-
-import MetaTrader5 as mt5  # pip install MetaTrader5
-import time
-
+log = 75203008
 
 def fur():
     mt5.initialize()
-    login = 51203790
+    login = log
 
 
     #balance = account_info.balance
     ee = []
 
-    def eq():
+    def eq(log):
+            login = log
             account_info = mt5.account_info()
             login_number = account_info.login
             equity = account_info.equity
             e = int(equity)
             ee.append(e)
             return e
-    eq()
+    eq(log)
 
     #if len(ee)>20:
     #    ee.pop[0]
@@ -236,4 +236,3 @@ def five():
 
 
 
-fur()

@@ -10,12 +10,113 @@ from tqdm import tqdm
 import threading as threading
 import plotly.express as px
 import numpy as np
+from dateutil.parser import parse
 
 #def num trade in 
 
 st.title('اینجا میتونی هیستوری سیگنال ها رو اپلود کنی '  )
  
   
+def analhist_tre(list):
+    
+    con_to_hist = pd.DataFrame()
+
+    def init_balance(df):
+        for index , row in  df.iterrows():
+            if row['Unnamed: 3'] == 'balance':
+                bal =   df.at[index , 'Unnamed: 11']
+                tim =   df.at[index , 'Trade History Report']  
+                break
+        if bal and tim :
+            return bal , tim
+        else:
+            print('file colume not normal and rejact!!!')
+
+    def clean(df):
+        s = 0
+        for index , row in df.iterrows():
+            if row['Trade History Report'] == 'Positions':
+                index_one = index +2
+                st.write(index_one)
+                s = s+1
+            if row['Trade History Report'] == 'Orders':
+                index_two = index
+                st.write(index_two)
+                s = s +1
+            if s == 2:
+                
+                df = df.drop(df.index[index_two:])
+                df = df.loc[index_one:]
+            
+        df = df.reset_index(drop=True)
+        return df
+
+    def col_name(df):
+        col = ['Time','Position','Symbol','Type','Volume','Price','S/L','T/P','Time_1','Price_1', 'Commission','Swap','Profit','Comment']
+        
+        df.columns = col
+        df
+        return df
+
+    def to_date_time(df):
+        df['Time'] = df['Time'].apply(lambda x: parse(x).strftime('%Y.%m.%d %H:%M:%S'))
+        df['Time_1'] = df['Time_1'].apply(lambda x: parse(x).strftime('%Y.%m.%d %H:%M:%S'))
+        df['Time'] = pd.to_datetime(df['Time'])
+        df['Time_1'] = pd.to_datetime(df['Time_1'])
+        return df    
+
+    def ea_to_signal(df, a_one, a_one_two):
+        df.reset_index(drop=True, inplace=True)
+        newdf = pd.DataFrame({'Type': ['Balance'] , 'Profit': [a_one] , 'Time': [a_one_two]})
+        #newdf = pd.concat([newdf, pd.DataFrame({'Type': 'Balance', 'Profit': a_one , 'Time': a_one_two}, index=[0])], ignore_index=True)
+        
+        for index , row in df.iterrows():
+            index += 1
+            newdf.at[index , 'Time']         = row['Time']
+            newdf.at[index , 'Symbol']       = row['Symbol']
+            newdf.at[index , 'Type']         = row['Type']
+            newdf.at[index , 'Volume']       = row['Volume']
+            newdf.at[index , 'Price']        = row['Price']
+            newdf.at[index , 'Commission']   = row['Commission']
+            newdf.at[index , 'Swap']         = row['Swap']
+            newdf.at[index , 'Comment']      = row['Comment']                           
+            newdf.at[index , 'Profit']       = row['Profit']
+            newdf.at[index , 'Time_1']       = row['Time_1']
+            newdf.at[index , 'Price_1']      = row['Price_1']
+            newdf.at[index , 'Price_1']      = row['Price_1']
+            newdf.at[index , 'Price_1']      = row['Price_1']
+                    
+        #newdf.iloc[[1,0],:] = newdf.iloc[[0,1],:]
+        newdf.reset_index(drop=True, inplace=True)
+        #newdff = newdf.replace(',', ';', regex=True)
+        return newdf
+
+
+    for i in list:
+        i = str(i)
+        st.write(i)
+        st.session_state
+        if i in st.session_state:
+            df = st.session_state[i]
+            df
+            a_one , a_one_two = init_balance(df)
+            a_two = clean(df)
+            a_tre = col_name(a_two)
+            a_for = to_date_time(a_tre)
+            a_five= ea_to_signal(a_for, a_one , a_one_two)
+            #a_five.iloc[0] = a_five.iloc[0].fillna('')
+            
+            a_five = a_five.iloc[::-1]
+            
+            #a_five.to_csv('nana.csv', mode='w', index = False)
+            
+            #st.write(a_five.columns)
+            con_to_hist = pd.concat([con_to_hist, a_five], ignore_index=True)
+    con_to_hist.reset_index(drop=True, inplace=True)
+    con_to_hist
+    #st.session_state.con_to_hist = con_to_hist
+    return con_to_hist
+
 
 @st.cache_data(ttl='1h' , max_entries=2 )
 def convert(dfe):
@@ -62,7 +163,7 @@ def convert(dfe):
                             non = False  
                             continue
 
-
+                        
                         elif row['Direction'] == 'in':
                             newdf.at[index , 'Time']         = df.at[index, 'Time']
                             newdf.at[index , 'Symbol']       = df.at[index, 'Symbol']
@@ -79,7 +180,7 @@ def convert(dfe):
                             newdf.at[indexx , 'Time_1']      = df.at[index, 'Time']
                             newdf.at[indexx , 'Price_1']     = df.at[index, 'Price']
                             newdf.at[indexx , 'Balance_now'] = df.at[index, 'Balance']
-                    
+                        newdf.at[index , 'name'] = str(dff)
                 newdf.iloc[[1,0],:] = newdf.iloc[[0,1],:]
                 newdf.reset_index(drop=True, inplace=True)
                 df = newdf.drop(newdf[(newdf['Type'] == 'Balance') & newdf['Price_1'].notna()].index)
@@ -110,12 +211,16 @@ def analhist_two(file_list):
 
     #st.write(file_list)
     hist_tow = pd.DataFrame()
+     
+
+      
     try:
         
         df = file_list
         df = df[::-1].reset_index(drop=True)
-        
-
+        nd = pd.DataFrame(columns=['+pipeg','+pipeg/deltaH','+pipeg/deltaM','+pipeg/Balance','+pipeg/VB','-pipeg','-pipeg/deltaH','-pipeg/deltaM','-pipeg/Balance','-pipeg/VB','+P','+PP','+PPVB','+PP/deltaH','+PP/deltaM','-P','-PP','-PPVB','-PP/deltaH','-PP/deltaM'])
+        df = pd.concat([df,nd], axis=1)
+        df
         df['Type'] = df['Type'].str.capitalize()
         
         df['Time']    = pd.to_datetime(df['Time'])
@@ -127,7 +232,7 @@ def analhist_two(file_list):
         df['Price']   = df['Price'].astype(str).str.replace(' ', '')
         df['Price']   = pd.to_numeric(df['Price'].str.replace(' ', ''), errors='coerce')
         df['Volume']  = pd.to_numeric(df['Volume'], errors='coerce')
-        df['name']    = None
+        
         num = 0
         num2 = 0
         balance = 0
@@ -159,25 +264,23 @@ def analhist_two(file_list):
                 if row['Type'] not in ['Buy', 'Sell']:
                     #print(f'task problm in tpye row {row}')
                     df = df.drop(index)
-                    
+                    continue
+                if row['Price_1'] - row['Price'] == 0 :
+                    df = df.drop(index)
                     continue
                 balance = balance + df.at[index , 'Profit']                    
                 df.at[index, 'balance']                = balance
                 df.at[index, 'ABSPP']                  = abs(row['Profit'] * 100) / balance
                 df.at[index, 'PP']                     = (row['Profit'] * 100) / balance
                 
-                if (row['Time_1'] - row['Time']).total_seconds() > 0 :
-                    df.at[index, 'deltaH'] = (row['Time_1'] - row['Time']).total_seconds() / 3600
-                    df.at[index, 'deltaM'] = (row['Time_1'] - row['Time']).total_seconds() / 60
-                else:
-                    df.at[index, 'delta'] = 1 
+                
+                df.at[index, 'deltaH'] = (row['Time_1'] - row['Time']).total_seconds() / 3600
+                df.at[index, 'deltaM'] = (row['Time_1'] - row['Time']).total_seconds() / 60
 
 
                 df.at[index, 'ABSpipeg']               = abs(row['Price_1'] - row['Price']) * 1000
                 df.at[index, 'V/B']                    = (row['Volume'] * 100000) / balance
 
-                if row['Price_1'] - row['Price'] == 0:
-                    df.at[index, 'ABSpipeg'] = 0
 
                 if row['Price_1'] - row['Price'] > 0 :
                     if row['Type'] == 'Buy':
@@ -186,7 +289,7 @@ def analhist_two(file_list):
                         df.at[index, '+pipeg/deltaM']   = df.at[index, '+pipeg'] / df.at[index, 'deltaM']
                         df.at[index, '+pipeg/Balance']  = df.at[index, '+pipeg'] / balance
                         df.at[index, '+pipeg/VB']       = df.at[index, '+pipeg'] / df.at[index, 'V/B']
-                        
+
 
                     if row['Type'] == 'Sell':
                         df.at[index, '-pipeg']          = row['Price_1'] - row['Price'] * 1000
@@ -222,8 +325,7 @@ def analhist_two(file_list):
                     df.at[index, '-PPVB']               = df.at[index, '-PP'] / df.at[index, 'V/B']
                     df.at[index, '-PP/deltaH']          = df.at[index, '-PP'] / df.at[index, 'deltaH']
                     df.at[index, '-PP/deltaM']          = df.at[index, '-PP'] / df.at[index, 'deltaM']
-                if row['Profit'] == 0:
-                    df.at[index, 'P'] = df.at[index, 'Profit']
+
 
                 df.at[index, 'ABSPP%VB']               = (df.at[index, 'ABSPP'] * 100) / (df.at[index, 'V/B'])
                 df.at[index, 'deltaH/VB']               =  df.at[index, 'deltaH'] / (df.at[index, 'V/B'])
@@ -309,10 +411,9 @@ def analhist(file_list):
                         df.at[index, 'ABSpipeg']               = abs(row['Price_1'] - row['Price']) * 1000
                         df.at[index, 'V/B']                    = (row['Volume'] * 100000) / balance
 
-                        if row['Price_1'] - row['Price'] == 0:
-                            df.at[index, 'ABSpipeg'] = 0
 
-                        if row['Price_1'] - row['Price'] > 0 :
+
+                        if row['Price_1'] - row['Price'] >= 0 :
                             if row['Type'] == 'Buy':
                                 df.at[index, '+pipeg']          = row['Price_1'] - row['Price'] * 1000            
                                 df.at[index, '+pipeg/deltaH']   = df.at[index, '+pipeg'] / df.at[index, 'deltaH']
@@ -343,7 +444,7 @@ def analhist(file_list):
                                 df.at[index, '-pipeg/Balance']      = df.at[index, '-pipeg'] / balance
                                 df.at[index, '-pipeg/VB']           = df.at[index, '-pipeg'] / df.at[index, 'V/B']
 
-                        if row['Profit'] > 0:
+                        if row['Profit'] >= 0:
                             df.at[index, '+P']                  = df.at[index, 'Profit']
                             df.at[index, '+PP']                 = abs(df.at[index, '+P'] * 100) / balance
                             df.at[index, '+PPVB']               = df.at[index, '+PP'] / df.at[index, 'V/B']
@@ -357,8 +458,7 @@ def analhist(file_list):
                             df.at[index, '-PP/deltaH']          = df.at[index, '-PP'] / df.at[index, 'deltaH']
                             df.at[index, '-PP/deltaM']          = df.at[index, '-PP'] / df.at[index, 'deltaM']
 
-                        if row['Profit'] == 0:
-                            df.at[index, 'P'] = df.at[index, 'Profit']
+
 
                         df.at[index, 'ABSPP%VB']                = (df.at[index, 'ABSPP'] * 100) / (df.at[index, 'V/B'])
                         df.at[index, 'deltaH/VB']               =  df.at[index, 'deltaH'] / (df.at[index, 'V/B'])
@@ -720,7 +820,7 @@ def pp3_chart(df):
 
     st.write('نمودار تایم پوزیشن و پیپیچ')
 
-    fifo = px.line(df , x = 'Time' , y= 'ABSpipeg' ,  width=800, height=800)
+    fifo = px.histogram(df , x = 'Time' , y= 'ABSpipeg' ,  width=800, height=800)
 
 
     st.plotly_chart(fifo)
@@ -814,15 +914,14 @@ def pp3_chart(df):
     size_max = 2 # حداکثر اندازه نقاط
 
     # نگاشت مقادیر PP به بازه اندازه‌ها
-    df['point_size'] = 1 #df['PP'].apply(lambda x: size_min + (size_max - size_min) * (x - df['PP'].min()) / (df['PP'].max() - df['PP'].min()))
+    #df['PP'].apply(lambda x: size_min + (size_max - size_min) * (x - df['PP'].min()) / (df['PP'].max() - df['PP'].min()))
 
     # ساخت نمودار با اندازه‌های متغیر برای نقاط
-    fig = px.scatter_3d(df, x='PP', y='V/B', z='deltaM', color='PP', 
-                        color_continuous_scale='RdYlGn', size='2')
+    fig = px.scatter_3d(df, x='PP', y='V/B', z='deltaM')
     fig.update_layout(width=800, height=1100)
 
     # تنظیم نمودار رنگی
-    fig.update_coloraxes(colorbar_title='PP', cmin=df['PP'].min(), cmax=df['PP'].max())
+
 
     st.plotly_chart(fig)
 
@@ -1049,16 +1148,16 @@ def main_app():
 
     uploaded_files = st.file_uploader("هیستوری ها رو انتخاب کن", accept_multiple_files=True, type=['csv'] , key= 'up_one')
     uploaded_filess = st.file_uploader("هیستوری ها رو انتخاب کن", accept_multiple_files=True , type=['xlsx'], key= 'up_two')
-
+    uploaded_filesss = st.file_uploader("ریپورت حساب ها رو انتخاب کن", accept_multiple_files=True , type=['xlsx'], key= 'up_tre')
 
 
     file_paths = []
     file_pathss = []
+    file_pathsss = []
 
 
 
-
-    if uploaded_files  or uploaded_filess :
+    if uploaded_files  or uploaded_filess or  uploaded_filesss :
 
 
         for file in uploaded_files: 
@@ -1083,12 +1182,22 @@ def main_app():
             file_pathss.append(file_pathh)
             session_rep = str(file_nameee)
             st.session_state[session_rep] = df_rep
+            st.session_state['name_ea']  = filee.name.split("/")[-1]
             #st.session_state[f'{file.namee}'] = dfd
             #file_namee = os.path.splitext(file.name)[0] + '.csv'
             #df.to_excel(file_namee, index=False )
             # دسترسی به لیست آدرس فایل ها
 
-
+        for fileee in uploaded_filesss: 
+            #df = pd.read_excel(io.StringIO(file.read().decode('utf-8')))
+            df_r = pd.read_excel(fileee)
+            df_r
+            file_nam = fileee.name
+            file_pa= fileee.name 
+            file_pathsss.append(file_pa)
+            session_work = str(file_nam)
+            st.session_state[session_work] = df_r
+            st.session_state['name_work']  = fileee.name.split("/")[-1]
 
 
 
@@ -1096,20 +1205,29 @@ def main_app():
 
         selected_files = st.multiselect(' سیگنال ها  ', uploaded_files , key= 'selc_one')
         selected_filess = st.multiselect('ریپورت های ربات ', uploaded_filess , key = 'selc_two')
-
+        selected_filesss = st.multiselect('ریپورت های حساب ', uploaded_filesss , key = 'selc_tre')
         filelist = []
         filelistt = []
-
+        filelisttt = []
 
 
         
         if st.button('پردازش روی فایل های انتخاب شده'):
-            if 'analhist' in st.session_state:
-                del st.session_state['analhist']
-            if 'analhist_two' in st.session_state:
-                del st.session_state['analhist_two']                
-            if 'data_tow' in st.session_state:
-                del st.session_state['data_tow']
+            def alaki():
+                if 'analhist' in st.session_state:
+                    del st.session_state['analhist']
+                if 'analhist_two' in st.session_state:
+                    del st.session_state['analhist_two']                
+                if 'data_tow' in st.session_state:
+                    del st.session_state['data_tow']
+                if 'name_ea' in st.session_state:
+                    del st.session_state['name_ea']
+                if 'ml' in st.session_state:
+                    del st.session_state['ml']
+                if 'name_work' in st.session_state:
+                    del st.session_state['name_work']
+            st.session_state.clear()
+            
 
             for file in selected_files:
                 st.write(f'name file : {file.name}','.....', f'size : {file.size}k')
@@ -1122,21 +1240,40 @@ def main_app():
                 filelistt.append(filename)
                 #st.session_state.report = filee.name       
                 # نام فایل برای پاک کردن
-
+            for fileee in selected_filesss:
+                st.write(f'name file : {fileee.name}','.....', f'size : {fileee.size}k')
+                #filename = os.path.splitext(filee.name)[0] + '.csv'
+                filenamee = fileee.name
+                filelisttt.append(filenamee)
 
             
-            if len(filelist) > 0 and len(filelistt) == 0 :
+            if len(filelist) > 0 and len(filelistt) == 0 :   # only mql signal history
                 analhist(filelist)
-            if len(filelist) > 0 and len(filelistt) > 0 :
+            if len(filelist) > 0 and len(filelistt) > 0 :    # signal and report ea
                 analhist(filelist)
-
                 file_convert = convert(filelistt)
                 analhist_two(file_convert)
-
-
-            if len(filelist) == 0 and len(filelistt) > 0 :
+            if len(filelist) == 0 and len(filelistt) > 0 :    # only ea report
                 file_convert = convert(filelistt)
                 analhist_two(file_convert)
+            if len(filelisttt) > 0 :
+                work_one = analhist_tre(filelisttt)
+                analhist_two(work_one)
+            if len(filelisttt) > 0 and len(filelistt) >0:
+                work_one = analhist_tre(filelisttt)
+                file_convert = convert(filelistt)
+                sumlist = filelistt + filelisttt
+                analhist_two(sumlist)
+            if len(filelisttt) > 0 and len(filelist) >0:
+                work_one = analhist_tre(filelisttt)
+                analhist_two(work_one)
+                analhist(filelist)
+            if len(filelisttt) > 0 and len(filelist) > 0 and len(filelistt) >0: 
+                work_one = analhist_tre(filelisttt)
+                file_convert = convert(filelistt)
+                sumlist = filelistt + filelisttt
+                analhist_two(sumlist)
+                analhist(filelist)
 
 main_app()
 
@@ -1164,7 +1301,7 @@ if 'analhist' in st.session_state or 'analhist_two' in st.session_state :
             dffg = st.session_state.analhist_two
 
 
-
+    
     # بازسازی ستون index
         
     
@@ -1173,12 +1310,13 @@ if 'analhist' in st.session_state or 'analhist_two' in st.session_state :
 
     dffg = dffg.sort_values(by='Time')
     dffg = dffg.reset_index(drop=True)
-    
+    st.session_state.ml = dffg
+
     b =timePPm(dffg)
+    
     d = inside(b)
     d = d[d['deltaM'] <= 600]
-    d
-    
+
 
 
     if st.button('اطلاعات اماری ' , key = 'anal' ):
